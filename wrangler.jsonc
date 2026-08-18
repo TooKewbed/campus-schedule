@@ -1,0 +1,17 @@
+{
+  // Cloudflare Workers deploy config.
+  //
+  // This project ships no server code — it is a Vite build, so the only thing
+  // to upload is the contents of dist/. Without this file wrangler assumes
+  // there is a Worker script to find, cannot find one, and fails the deploy
+  // even though the build itself succeeded.
+  //
+  // "name" must match the Worker in the Cloudflare dashboard. If the project
+  // was created under a different name, change it here rather than renaming
+  // the Worker, which would change the deployed URL.
+  "name": "campus-schedule",
+  "compatibility_date": "2026-08-15",
+  "assets": {
+    "directory": "./dist"
+  }
+}
