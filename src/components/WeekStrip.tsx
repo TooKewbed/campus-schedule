@@ -3,6 +3,7 @@ import { isFixed, type ScheduleEvent } from '../types/event';
 import { detectConflicts } from '../lib/conflicts';
 import { addDays, sameDay, startOfWeek } from '../lib/time';
 import type { DayMarker } from '../types/dayMarker';
+import { dominantKind } from '../lib/dateKind';
 
 interface Props {
   events: ScheduleEvent[];
@@ -58,7 +59,13 @@ export default function WeekStrip({
                 {fixedCount > 0 && <span className="count">{fixedCount}</span>}
                 {conflictCount > 0 && <span className="warn-dot" title="Scheduling conflict" />}
                 {markers.length > 0 && (
-                  <span className="marker-dot" title={markers.map((m) => m.title).join(', ')} />
+                  <span
+                    /* Coloured by the most consequential date on the day, so an
+                       exam later in the week is visible on approach rather than
+                       only once you land on it. */
+                    className={`marker-dot kind-${dominantKind(markers)}`}
+                    title={markers.map((m) => m.title).join(', ')}
+                  />
                 )}
               </span>
             </button>

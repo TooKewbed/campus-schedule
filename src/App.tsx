@@ -40,7 +40,6 @@ import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
 import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
-import SyllabusImport from './components/SyllabusImport';
 import SyncStatus from './components/SyncStatus';
 import TaskList from './components/TaskList';
 import WeekStrip from './components/WeekStrip';
@@ -384,28 +383,6 @@ export default function App() {
     [],
   );
 
-  /**
-   * Bulk add from a syllabus import.
-   *
-   * Anything already sitting on the same day with the same title is dropped,
-   * so re-importing a corrected syllabus tops up the calendar instead of
-   * doubling every date on it.
-   */
-  const addMarkers = useCallback((incoming: DayMarker[]) => {
-    setMarkers((prev) => {
-      const seen = new Set(
-        prev.map((m) => `${m.year}-${m.month}-${m.day}-${m.title.toLowerCase()}`),
-      );
-      const fresh = incoming.filter((m) => {
-        const key = `${m.year}-${m.month}-${m.day}-${m.title.toLowerCase()}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      return [...prev, ...fresh];
-    });
-  }, []);
-
   const deleteMarker = useCallback((id: string) => {
     setMarkers((prev) => prev.filter((m) => m.id !== id));
   }, []);
@@ -499,9 +476,8 @@ export default function App() {
             onDelete={deleteMarker}
           />
 
-          <SyllabusImport onAdd={addMarkers} />
 
-          <DayNotes markers={dayMarkers} />
+          <DayNotes markers={dayMarkers} isToday={isToday} />
 
           {/* The grid always renders. An empty schedule is a real, usable state —
               it is the surface you drag on to build one, not an error to explain. */}

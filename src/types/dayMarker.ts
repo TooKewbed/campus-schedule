@@ -16,12 +16,16 @@ export interface DayMarker {
   day: number;
   /** null means it repeats every year — birthdays, anniversaries. */
   year: number | null;
+  /**
+   * 'syllabus' is retained only so dates saved by an earlier build, when
+   * syllabus import existed, still load and render rather than being silently
+   * dropped on read. Nothing writes it any more.
+   */
   source: 'holiday' | 'manual' | 'syllabus';
   /**
-   * Set for dates pulled out of a syllabus, so "CHEM 101" can be shown beside
-   * the title and every date from one course can be found again later. Kept
-   * separate from the title rather than prefixed into it: a title the user
-   * edits should not be able to break which course a date belongs to.
+   * e.g. "CHEM 101", shown beside the title. Kept separate from the title
+   * rather than prefixed into it: a title the user edits should not be able to
+   * break which course a date belongs to.
    */
   courseCode?: string;
 }

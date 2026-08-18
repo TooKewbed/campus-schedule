@@ -795,6 +795,11 @@ footer {
     border: 1px solid var(--separator-strong);
   }
   .toolbar { background: var(--bg-grouped); backdrop-filter: none; }
+  /* Fills are faint by design; at this setting the control needs an edge to
+     be a control rather than a tinted rectangle. */
+  .field input, .field select {
+    border: 1px solid var(--separator-strong);
+  }
 }
 
 /* ------------------------------------------------------------ responsive -- */
@@ -1111,6 +1116,40 @@ footer {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent);
 }
 
+/* ---- select ---- */
+/* The dropdown list is drawn by the browser, not by us, and it takes its
+   colours from the element. The shared fill above is translucent, which is
+   fine for a text input painted on a known background but resolves to
+   something washed out once the popup composites it over its own surface —
+   pale grey text on near-white. Everything below is about making the open
+   list legible, which means being explicit rather than translucent. */
+
+.field select {
+  background-color: var(--bg-card-inset);
+  /* Follow the app's theme rather than the operating system's: with the
+     appearance toggle set to Dark on a light OS, the popup would otherwise
+     render light while inheriting light text. */
+  color-scheme: inherit;
+  /* Room for the native disclosure arrow so long category names do not run
+     underneath it. */
+  padding-right: 28px;
+}
+
+.field select option,
+.field select optgroup {
+  background-color: var(--bg-card);
+  color: var(--label);
+}
+
+/* The group headings carry the fixed/flexible split, so they need to read as
+   headings without competing with the options themselves. */
+.field select optgroup {
+  font-weight: 650;
+  color: var(--label-secondary);
+}
+
+.field select option { font-weight: 400; }
+
 /* ---- day-of-week picker ---- */
 
 .day-picker { display: flex; gap: 6px; }
@@ -1199,26 +1238,95 @@ footer {
 /* ------------------------------------------------------------- day notes -- */
 /* All-day markers live above the grid, never inside it. */
 
-.day-notes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+/* ------------------------------------------------------------- day notes -- */
+/* Sized to be read before the schedule beneath them. A chip was the wrong
+   weight for 'you have an exam today' — it read as a footnote on the thing it
+   was trying to warn about. */
+
+.day-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
 
 .day-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px 6px 10px;
-  border-radius: 999px;
-  font-size: 13px;
-  letter-spacing: -0.006em;
-  background: var(--bg-card);
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  /* A wash of the accent rather than a flat card, so the row is identifiable
+     from the corner of the eye before any of it is actually read. */
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg-card));
   box-shadow: var(--shadow-card);
-  color: var(--label);
 }
-.day-note-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.day-note.holiday .day-note-dot { background: var(--indigo); }
-.day-note.manual .day-note-dot { background: var(--pink); }
-/* Syllabus dates get their own colour so an extracted exam is visibly not
-   something you typed — the two have different trustworthiness. */
-.day-note.syllabus .day-note-dot { background: var(--orange); }
+
+/* The rail carries the colour at full strength; the background only hints at
+   it. Two weights of the same hue read as one object. */
+.day-note-rail {
+  width: 5px;
+  flex: none;
+  background: var(--accent);
+}
+
+.day-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 16px;
+  min-width: 0;
+}
+
+.day-note-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.day-note-title {
+  font-size: 20px;
+  font-weight: 650;
+  /* Larger type needs tighter tracking to hold the same optical rhythm. */
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--label);
+  overflow-wrap: anywhere;
+}
+
+/* On the day itself the accent goes solid and the card gains a ring. This is
+   the one state worth shouting in: a date that has arrived. */
+.day-note.today {
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+              var(--shadow-card);
+}
+
+.day-note-now {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+/* Different dates need different reactions, so they do not share a colour.
+   Kind is read from the title; holidays are never reclassified. */
+.day-note.kind-exam       { --accent: var(--red); }
+.day-note.kind-quiz       { --accent: var(--orange); }
+.day-note.kind-assignment { --accent: var(--blue); }
+.day-note.kind-project    { --accent: var(--purple); }
+.day-note.kind-break      { --accent: var(--green); }
+.day-note.kind-holiday    { --accent: var(--indigo); }
+.day-note.kind-other      { --accent: var(--pink); }
+
+@media (max-width: 560px) {
+  .day-note-title { font-size: 18px; }
+}
 
 .series-rail.marker { background: var(--pink); }
 
@@ -1250,7 +1358,17 @@ footer {
 }
 
 /* marker dot in the week strip */
-.day-chip .marker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--indigo); }
+/* Slightly larger than the conflict dot beside it, and carrying the same
+   colour language as the day-note cards, so the strip and the day agree about
+   what kind of date is on a given square. */
+.day-chip .marker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--indigo); }
+.day-chip .marker-dot.kind-exam       { background: var(--red); }
+.day-chip .marker-dot.kind-quiz       { background: var(--orange); }
+.day-chip .marker-dot.kind-assignment { background: var(--blue); }
+.day-chip .marker-dot.kind-project    { background: var(--purple); }
+.day-chip .marker-dot.kind-break      { background: var(--green); }
+.day-chip .marker-dot.kind-holiday    { background: var(--indigo); }
+.day-chip .marker-dot.kind-other      { background: var(--pink); }
 
 /* -------------------------------------------------- delete affordance -- */
 
@@ -1841,192 +1959,8 @@ dialog.confirm.sheet { max-width: 460px; }
   color: #fff;
 }
 
-/* -------------------------------------------------------------- syllabus -- */
 
-.syllabus { margin-top: 26px; }
-
-.syllabus-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 10px;
-  padding: 0 4px;
-}
-
-.syllabus-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.syllabus-head h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
-.syllabus-head-sub { font-size: 13px; letter-spacing: 0; color: var(--label-secondary); }
-
-.syllabus-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  background: var(--bg-card);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
-}
-
-.syllabus-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.syllabus-error { margin: 0; font-size: 13px; line-height: 1.4; color: var(--red); }
-
-.syllabus-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.syllabus-empty p { margin: 0; font-size: 14px; line-height: 1.45; }
-
-/* A rule with the label sitting in a gap in it. */
-.syllabus-or {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--label-tertiary);
-}
-.syllabus-or::before,
-.syllabus-or::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--separator);
-}
-
-/* -------------------------------------------------------------- dropzone -- */
-
-.dropzone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 22px 16px;
-  border: 1.5px dashed var(--separator-strong);
-  border-radius: var(--r-md);
-  background: var(--bg-card-inset);
-  text-align: center;
-  transition: border-color var(--dur-fast) var(--ease-out),
-              background-color var(--dur-fast) var(--ease-out);
-}
-
-.dropzone.over {
-  border-color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 8%, var(--bg-card-inset));
-}
-
-.dropzone-main { margin: 0; font-size: 14px; color: var(--label-secondary); }
-
-/* ---------------------------------------------------------------- review -- */
-
-.review-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.review-count { font-size: 13px; color: var(--label-secondary); }
-.review-bulk { display: flex; gap: 10px; }
-
-.review-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  /* Long syllabi produce long lists; keep the Add button reachable. */
-  max-height: 420px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.review-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 8px;
-  border-radius: var(--r-sm);
-  /* Unticked rows recede rather than disappear — still readable, clearly not
-     going to be added. */
-  opacity: 0.5;
-  transition: opacity var(--dur-fast) var(--ease-out),
-              background-color var(--dur-fast) var(--ease-out);
-}
-
-.review-row.on { opacity: 1; }
-.review-row.on:nth-child(odd) { background: var(--bg-card-inset); }
-
-.review-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
-
-.review-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-
-.review-date {
-  font-size: 13px;
-  font-weight: 590;
-  font-variant-numeric: tabular-nums;
-  color: var(--label);
-}
-
-.review-span,
-.review-flag {
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--fill-tertiary);
-  color: var(--label-secondary);
-}
-
-/* The one row state worth colouring: a date found with nothing to suggest what
-   it is. It starts unticked, and this says why. */
-.review-flag { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
-
-.review-title {
-  width: 100%;
-  font: inherit;
-  font-size: 14px;
-  padding: 5px 8px;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  background: var(--fill-tertiary);
-  color: var(--label);
-}
-
-.review-title:focus {
-  outline: none;
-  border-color: var(--blue);
-  background: var(--bg-card);
-}
-
-/* The line the date was read from. Small and quiet — it is there for when a row
-   looks wrong and you need to see why, not for normal reading. */
-.review-context {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--label-tertiary);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* ------------------------------------------------------------- kind chips -- */
-
-.kind-chip {
-  font-size: 11px;
-  font-weight: 590;
-  letter-spacing: 0.01em;
-  padding: 2px 7px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.kind-exam       { background: color-mix(in srgb, var(--red) 16%, transparent);    color: var(--red); }
-.kind-quiz       { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
-.kind-assignment { background: color-mix(in srgb, var(--blue) 15%, transparent);   color: var(--blue); }
-.kind-project    { background: color-mix(in srgb, var(--purple) 16%, transparent); color: var(--purple); }
-.kind-break      { background: color-mix(in srgb, var(--green) 16%, transparent);  color: var(--green); }
-.kind-other      { background: var(--fill-tertiary); color: var(--label-secondary); }
-
-/* Course badge on a syllabus-sourced date, inside the series meta line. */
+/* Course badge on an important date, inside the series meta line. */
 .series-course {
   display: inline-block;
   margin-right: 6px;
