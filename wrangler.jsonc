@@ -9,7 +9,7 @@
   // "name" must match the Worker in the Cloudflare dashboard. If the project
   // was created under a different name, change it here rather than renaming
   // the Worker, which would change the deployed URL.
-  "name": "campus-schedule",
+  "name": "schedulo",
   "compatibility_date": "2026-08-15",
   "assets": {
     "directory": "./dist"
