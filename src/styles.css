@@ -1665,3 +1665,127 @@ dialog.confirm.sheet { max-width: 460px; }
 /* The end-mode switch sits inline with the date button. */
 .repeat-until .segmented { flex: none; }
 .repeat-until .segmented button { padding: 5px 10px; font-size: 12px; }
+
+/* ------------------------------------------------------------ sign in -- */
+/* The one screen shown before the schedule exists, so it carries the whole
+   window rather than sitting inside the app's card grid. */
+
+.signin {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg-grouped);
+}
+
+.signin-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 24px 24px;
+  background: var(--bg-card);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.signin-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  /* Larger type needs tighter tracking to keep the same optical rhythm. */
+  letter-spacing: -0.02em;
+  color: var(--label);
+}
+
+.signin-sub {
+  margin: -8px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--label-secondary);
+}
+
+.signin-error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--red);
+}
+
+.signin-submit {
+  justify-content: center;
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--blue);
+  color: #fff;
+}
+
+.signin-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+
+.signin-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--label-tertiary);
+}
+
+/* A button that reads as a link: same affordance, but still a real button for
+   keyboard and screen-reader purposes. */
+.linkish {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--blue);
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .linkish:hover { text-decoration: underline; }
+}
+
+/* --------------------------------------------------------- sync status -- */
+
+.sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--label-secondary);
+}
+
+.sync-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--label-tertiary);
+  flex: none;
+}
+
+.sync-synced  { background: var(--green); }
+.sync-saving  { background: var(--orange); }
+.sync-loading { background: var(--label-tertiary); }
+.sync-error   { background: var(--red); }
+
+.sync-label { white-space: nowrap; }
+
+/* The label is the redundant half on a narrow screen — the dot and the sign-out
+   control both still work without it. */
+@media (max-width: 560px) {
+  .sync-label { display: none; }
+}
+
+:root[data-theme='dark'] .signin-submit,
+:root:not([data-theme='light']) .signin-submit {
+  color: #fff;
+}
