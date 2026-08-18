@@ -37,9 +37,13 @@ import CommitmentDialog, {
 import ImportantDates from './components/ImportantDates';
 import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
+import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
+import SyncStatus from './components/SyncStatus';
 import TaskList from './components/TaskList';
 import WeekStrip from './components/WeekStrip';
+import { useSync } from './hooks/useSync';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 
 /** How far around today recurring events get expanded on import. */
 const EXPAND_BACK_DAYS = 30;
@@ -82,6 +86,14 @@ export default function App() {
   const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   const [pendingCreate, setPendingCreate] = useState<DraftRange | null>(null);
   const [pendingEdit, setPendingEdit] = useState<ScheduleEvent | null>(null);
+
+  // Mirrors the four persisted collections to the account when signed in, and
+  // pulls them back down on a new device. Local state stays authoritative for
+  // rendering; this only follows it.
+  const sync = useSync(
+    { events, tasks, markers, showHolidays },
+    { setEvents, setTasks, setMarkers, setShowHolidays },
+  );
 
   // Lets handlers record an undo step without taking `events` as a dependency,
   // which would rebuild them on every schedule change.
@@ -374,6 +386,16 @@ export default function App() {
     return findFreeWindows(dayEvents, dayStart, dayEnd);
   }, [dayEvents, selected]);
 
+  // Every hook above runs unconditionally; the gate below is the last thing
+  // before render so signing in never changes the hook order.
+  //
+  // Held back until `ready` so a returning user goes straight to their
+  // schedule instead of seeing the sign-in form flash past while the stored
+  // session is read.
+  if (isSupabaseConfigured && supabase && sync.ready && !sync.session && !sync.offlineChosen) {
+    return <SignIn supabase={supabase} onContinueOffline={sync.chooseOffline} />;
+  }
+
   return (
     <div className="app">
       <header className={`toolbar${scrolled ? ' scrolled' : ''}`}>
@@ -385,6 +407,12 @@ export default function App() {
           </p>
         </div>
         <div className="toolbar-actions">
+          <SyncStatus
+            status={sync.status}
+            error={sync.error}
+            email={sync.session?.user.email}
+            onSignOut={sync.signOutAndForget}
+          />
           {!isToday && (
             <button className="btn plain" onClick={() => setSelected(today)}>
               Today
