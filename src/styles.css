@@ -1988,3 +1988,108 @@ dialog.confirm.sheet { max-width: 460px; }
 /* The repeat choice spans the whole form row inside the manual entry grid,
    where it sits between the type and the day/date field it controls. */
 .manual-form .repeat-choice { margin: 0; }
+
+/* ----------------------------------------------------- commitment register -- */
+/* Everything on the schedule, by weekday, below the day it describes.
+   Split out of the entry panel, which was being a form and a register at the
+   same time and doing neither clearly. */
+
+.commitments { margin-top: 20px; }
+
+.commitment-days {
+  display: grid;
+  /* Wide enough for a title and its time without wrapping; as many columns as
+     fit, so a laptop sees the week at once and a phone sees a single list. */
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+.commitment-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-card-inset);
+  border-radius: var(--r-md);
+}
+
+.commitment-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.commitment-day-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--label-secondary);
+}
+
+.commitment-day-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--label-tertiary);
+}
+
+.commitment-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--label-tertiary);
+}
+
+.commitment-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.commitment-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 8px 8px 0;
+  background: var(--bg-card);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.commitment-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+
+.commitment-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 590;
+  letter-spacing: -0.01em;
+  color: var(--label);
+  /* A long course name truncates rather than pushing the delete button off. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commitment-meta {
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--label-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Deleting a repeating commitment from one day removes it from all of them,
+   which is worth saying once rather than discovering. */
+.commitment-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--label-tertiary);
+}

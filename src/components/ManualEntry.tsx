@@ -1,20 +1,12 @@
 import { useState } from 'react';
-import {
-  CATEGORY_KIND,
-  CATEGORY_LABEL,
-  type EventCategory,
-  type ScheduleEvent,
-} from '../types/event';
+import { CATEGORY_KIND, CATEGORY_LABEL, type EventCategory } from '../types/event';
 import {
   parseTimeInput,
-  toTimeInput,
   validateOnce,
   validateSeries,
-  type ManualSeries,
   type ManualSeriesInput,
 } from '../lib/manualEvents';
-import { formatDuration, formatRange, parseISODate, toISODate } from '../lib/time';
-import { describeDays } from '../lib/weekdays';
+import { formatDuration, parseISODate, toISODate } from '../lib/time';
 import ChoiceOption from './ChoiceOption';
 import DatePicker from './DatePicker';
 import WeekdayPicker from './WeekdayPicker';
@@ -23,25 +15,14 @@ const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment'];
 const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring'];
 
 interface Props {
-  series: ManualSeries[];
-  /** One-off commitments, listed alongside the repeating ones. */
-  singles: ScheduleEvent[];
+  /** How many commitments exist, for the summary line only. */
+  count: number;
   defaultOpen: boolean;
   onAdd: (input: ManualSeriesInput) => void;
   onAddOnce: (input: Omit<ManualSeriesInput, 'weekdays'>, date: Date) => void;
-  onDelete: (seriesId: string) => void;
-  onDeleteSingle: (id: string) => void;
 }
 
-export default function ManualEntry({
-  series,
-  singles,
-  defaultOpen,
-  onAdd,
-  onAddOnce,
-  onDelete,
-  onDeleteSingle,
-}: Props) {
+export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('class');
@@ -100,9 +81,9 @@ export default function ManualEntry({
         <span className="manual-head-text">
           <strong>Add a class or commitment</strong>
           <span className="manual-head-sub">
-            {series.length === 0
-              ? 'Type it in — no calendar file needed'
-              : `${series.length} added by hand`}
+            {count === 0
+              ? 'Type it in — repeating or one-off'
+              : `${count} on the schedule`}
           </span>
         </span>
         <Chevron open={open} />
@@ -248,65 +229,6 @@ export default function ManualEntry({
             </button>
           </div>
 
-          {(series.length > 0 || singles.length > 0) && (
-            <ul className="series-list">
-              {/* One-off commitments are listed here too. A final added in
-                  August sits four months away on the grid, so without this the
-                  panel would give no sign it had worked. */}
-              {singles.map((event) => (
-                <li key={event.id} className="series">
-                  <span
-                    className={`series-rail ${CATEGORY_KIND[event.category]}`}
-                    aria-hidden="true"
-                  />
-                  <span className="series-main">
-                    <span className="series-title">{event.title}</span>
-                    <span className="series-meta">
-                      <span className="series-once">Once</span>
-                      {event.start.toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}{' '}
-                      · {formatRange(event.start, event.end)}
-                      {event.location ? ` · ${event.location}` : ''} ·{' '}
-                      {CATEGORY_LABEL[event.category]}
-                    </span>
-                  </span>
-                  <button
-                    className="icon-btn danger"
-                    onClick={() => onDeleteSingle(event.id)}
-                    aria-label={`Remove ${event.title}`}
-                    title="Remove"
-                  >
-                    <TrashGlyph />
-                  </button>
-                </li>
-              ))}
-
-              {series.map((s) => (
-                <li key={s.seriesId} className="series">
-                  <span className={`series-rail ${CATEGORY_KIND[s.category]}`} aria-hidden="true" />
-                  <span className="series-main">
-                    <span className="series-title">{s.title}</span>
-                    <span className="series-meta">
-                      {describeDays(s.weekdays)} · {toTimeInput(s.startMinutes)}–
-                      {toTimeInput(s.endMinutes)}
-                      {s.location ? ` · ${s.location}` : ''} · {CATEGORY_LABEL[s.category]}
-                    </span>
-                  </span>
-                  <button
-                    className="icon-btn danger"
-                    onClick={() => onDelete(s.seriesId)}
-                    aria-label={`Remove ${s.title}`}
-                    title="Remove"
-                  >
-                    <TrashGlyph />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       </div>
     </section>
@@ -325,20 +247,6 @@ function Chevron({ open }: { open: boolean }) {
         d="M5 6.5L8 9.5l3-3"
         stroke="currentColor"
         strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function TrashGlyph() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3 4.5h10M6.5 4.5V3.2h3v1.3M4.6 4.5l.6 8.3h5.6l.6-8.3"
-        stroke="currentColor"
-        strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

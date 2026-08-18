@@ -30,6 +30,7 @@ import {
 } from './lib/storage';
 import ConfirmDeleteDialog from './components/ConfirmDeleteDialog';
 import DayGrid, { type DraftRange } from './components/DayGrid';
+import CommitmentList from './components/CommitmentList';
 import DayNotes from './components/DayNotes';
 import CommitmentDialog, {
   type CommitmentTarget,
@@ -458,13 +459,10 @@ export default function App() {
       <div className="layout">
         <main className="layout-main">
           <ManualEntry
-            series={manualSeries}
-            singles={manualSingles}
+            count={manualSeries.length + manualSingles.length}
             defaultOpen={events.length === 0}
             onAdd={addSeries}
             onAddOnce={addSingle}
-            onDelete={deleteSeries}
-            onDeleteSingle={deleteEvent}
           />
 
           <ImportantDates
@@ -509,6 +507,13 @@ export default function App() {
             onUndo={undo}
             onRequestCreate={setPendingCreate}
             onRequestEdit={setPendingEdit}
+          />
+
+          <CommitmentList
+            series={manualSeries}
+            singles={manualSingles}
+            onDelete={deleteSeries}
+            onDeleteSingle={deleteEvent}
           />
         </main>
 

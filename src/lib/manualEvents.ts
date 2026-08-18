@@ -239,3 +239,76 @@ export function validateOnce(input: Omit<ManualSeriesInput, 'weekdays'>): string
 export function singleCommitments(events: ScheduleEvent[]): ScheduleEvent[] {
   return events.filter((e) => e.source === 'manual' && !e.seriesId).sort(byStart);
 }
+
+/* --------------------------------------------------- grouping for display -- */
+
+/**
+ * One commitment as it appears on one day.
+ *
+ * A weekly series meeting Mon/Wed/Fri produces three of these, one per day,
+ * because the question the list answers is "what do I have on Wednesday" —
+ * not "what series exist".
+ */
+export interface DayCommitment {
+  /** Unique per row; a series appears on several days so its id is not. */
+  key: string;
+  title: string;
+  category: EventCategory;
+  location?: string;
+  startMinutes: number;
+  endMinutes: number;
+  /** Set only for one-offs, which belong to a date rather than a weekday. */
+  date?: Date;
+  /** Whichever of these is set decides what deleting the row removes. */
+  seriesId?: string;
+  eventId?: string;
+}
+
+/**
+ * Commitments arranged by day of the week, indexed by getDay().
+ *
+ * Always seven entries, including empty ones, so callers index by weekday
+ * rather than having to search — and so a day with nothing on it is a fact the
+ * caller can choose to show rather than one it has to infer.
+ */
+export function groupByWeekday(
+  series: ManualSeries[],
+  singles: ScheduleEvent[],
+): DayCommitment[][] {
+  const days: DayCommitment[][] = Array.from({ length: 7 }, () => []);
+
+  for (const s of series) {
+    for (const weekday of s.weekdays) {
+      if (weekday < 0 || weekday > 6) continue;
+      days[weekday].push({
+        key: `${s.seriesId}-${weekday}`,
+        title: s.title,
+        category: s.category,
+        location: s.location,
+        startMinutes: s.startMinutes,
+        endMinutes: s.endMinutes,
+        seriesId: s.seriesId,
+      });
+    }
+  }
+
+  for (const event of singles) {
+    days[event.start.getDay()].push({
+      key: event.id,
+      title: event.title,
+      category: event.category,
+      location: event.location,
+      startMinutes: minutesOfDate(event.start),
+      endMinutes: minutesOfDate(event.end),
+      date: event.start,
+      eventId: event.id,
+    });
+  }
+
+  // Earliest first, then by name so two things at the same hour hold a stable
+  // order instead of shuffling between renders.
+  for (const day of days) {
+    day.sort((a, b) => a.startMinutes - b.startMinutes || a.title.localeCompare(b.title));
+  }
+  return days;
+}
