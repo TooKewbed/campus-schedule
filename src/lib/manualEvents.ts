@@ -6,10 +6,9 @@ import { addDays, startOfDay } from './time';
  * Manually entered commitments.
  *
  * A hand-entered class is a weekly recurring series, so it expands into
- * individual occurrences exactly like an RRULE from an .ics file does. Both
- * paths produce plain ScheduleEvents, which means conflict detection, free-time
- * math and layout never need to know where an event came from — only `source`
- * distinguishes them, and only so an import can avoid clobbering manual work.
+ * individual occurrences up front. Everything downstream — conflict detection,
+ * free-time math, layout — then works on plain ScheduleEvents and never has to
+ * reason about recurrence rules.
  */
 export interface ManualSeriesInput {
   title: string;

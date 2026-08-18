@@ -5,7 +5,6 @@ import { createMarker, markersOn, type DayMarker } from './types/dayMarker';
 import { detectConflicts } from './lib/conflicts';
 import { usFederalHolidays } from './lib/holidays';
 import { findFreeWindows } from './lib/freeTime';
-import { parseIcs } from './lib/ics';
 import { GRID } from './lib/layout';
 import {
   applyValues,
@@ -36,7 +35,6 @@ import CommitmentDialog, {
   type EditScope,
 } from './components/CommitmentDialog';
 import ImportantDates from './components/ImportantDates';
-import ImportPanel, { type ImportSummary } from './components/ImportPanel';
 import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
 import StatTiles from './components/StatTiles';
@@ -77,8 +75,6 @@ export default function App() {
   const [markers, setMarkers] = useState<DayMarker[]>(() => loadMarkers());
   const [showHolidays, setShowHolidays] = useState<boolean>(() => loadShowHolidays());
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
-  const [summary, setSummary] = useState<ImportSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [appearance, setAppearance] = useState<Appearance>('system');
   const [scrolled, setScrolled] = useState(false);
@@ -133,43 +129,6 @@ export default function App() {
 
   const today = useMemo(() => startOfDay(now), [now]);
   const isToday = sameDay(selected, today);
-
-  const importText = useCallback((text: string, fileName: string) => {
-    const anchor = startOfWeek(new Date());
-    try {
-      const result = parseIcs(text, {
-        rangeStart: addDays(anchor, -EXPAND_BACK_DAYS),
-        rangeEnd: addDays(anchor, EXPAND_FORWARD_DAYS),
-      });
-
-      // Replace only what came from a previous file. Hand-entered classes are
-      // the user's own work and must survive an import.
-      setEvents((prev) => [...prev.filter((e) => e.source === 'manual'), ...result.events]);
-      setError(null);
-      setSummary({
-        fileName,
-        sourceEventCount: result.sourceEventCount,
-        occurrenceCount: result.events.length,
-        warnings: result.warnings,
-      });
-
-      // Jump to the first day that actually has something on it.
-      const firstUpcoming = result.events
-        .filter((e) => e.start >= startOfDay(new Date()))
-        .sort((a, b) => +a.start - +b.start)[0];
-      if (firstUpcoming) setSelected(startOfDay(firstUpcoming.start));
-    } catch (e) {
-      setSummary(null);
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, []);
-
-  // "Clear" belongs to the import panel, so it drops the imported file only.
-  const handleClear = useCallback(() => {
-    setEvents((prev) => prev.filter((e) => e.source === 'manual'));
-    setSummary(null);
-    setError(null);
-  }, []);
 
   const addSeries = useCallback(
     (input: ManualSeriesInput) => {
@@ -439,14 +398,6 @@ export default function App() {
           />
         </div>
       </header>
-
-      <ImportPanel
-        summary={summary}
-        error={error}
-        hasEvents={events.some((e) => e.source === 'ics')}
-        onImportText={importText}
-        onClear={handleClear}
-      />
 
       <ManualEntry
         series={manualSeries}

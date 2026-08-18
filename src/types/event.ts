@@ -60,6 +60,11 @@ export interface ScheduleEvent {
   /** e.g. "CHEM 101", parsed out of the summary when it looks like a course code. */
   courseCode?: string;
   description?: string;
+  /**
+   * Everything is hand-entered now. 'ics' is retained only so events saved by
+   * an earlier build, when calendar import existed, still load and render
+   * rather than being silently dropped on read.
+   */
   source: 'ics' | 'manual';
   /** Shared by every occurrence expanded from one recurring VEVENT. */
   seriesId?: string;

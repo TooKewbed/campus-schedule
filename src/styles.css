@@ -158,15 +158,6 @@ body {
 
 button { font: inherit; color: inherit; }
 
-code {
-  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
-  font-size: 0.86em;
-  background: var(--fill-tertiary);
-  padding: 1px 5px;
-  border-radius: 5px;
-  letter-spacing: 0;
-}
-
 .app { max-width: 1060px; margin: 0 auto; padding: 0 20px 72px; }
 
 /* --------------------------------------------------------------- toolbar -- */
@@ -295,62 +286,6 @@ code {
 .segmented button[aria-selected="true"] { color: var(--label); }
 .segmented button:active { transform: scale(0.96); }
 .segmented button:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent); }
-
-/* --------------------------------------------------------- import panel -- */
-
-.import-panel {
-  background: var(--bg-card);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
-  padding: 16px 18px;
-  margin-bottom: 20px;
-  border: 1px solid transparent;
-  transition: border-color var(--dur-fast) var(--ease-out),
-              background-color var(--dur-fast) var(--ease-out);
-}
-
-.import-panel.dragging {
-  border-color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 8%, var(--bg-card));
-}
-
-.import-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.import-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.import-copy strong {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-.import-copy span {
-  font-size: 13px;
-  line-height: 1.4;
-  letter-spacing: 0;
-  color: var(--label-secondary);
-  max-width: 46ch;
-}
-
-.import-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-.notice {
-  margin-top: 14px;
-  font-size: 13px;
-  line-height: 1.45;
-  letter-spacing: 0;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-}
-.notice.ok    { background: var(--fill-tertiary); color: var(--label-secondary); }
-.notice.error { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); }
-.notice strong { color: var(--label); font-weight: 600; }
-.warnings { margin: 6px 0 0; padding-left: 18px; }
-.warnings li { margin-top: 3px; }
 
 /* ------------------------------------------------------------------- key -- */
 /* Sits inside the board, below the grid it describes, behind a hairline. */
@@ -808,7 +743,7 @@ footer {
     --label-tertiary:  rgba(60, 60, 67, 0.65);
     --separator:       rgba(60, 60, 67, 0.55);
   }
-  .stat-tile, .board, .week-strip, .import-panel, .manual {
+  .stat-tile, .board, .week-strip, .manual {
     border: 1px solid var(--separator-strong);
   }
   .toolbar { background: var(--bg-grouped); backdrop-filter: none; }
