@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { watchSession } from '../lib/auth';
+import { signOut, watchSession } from '../lib/auth';
 import {
   fetchAll,
   pushEvents,
@@ -240,10 +240,7 @@ export function useSync(state: State, setters: Setters): Sync {
     setShowHolidays(true);
     remoteRef.current = null;
 
-    if (supabase) {
-      const { signOut } = await import('../lib/auth');
-      await signOut(supabase);
-    }
+    if (supabase) await signOut(supabase);
     setOfflineChosen(false);
   }, []);
 
