@@ -1,14 +1,22 @@
 import { useState } from 'react';
-import { CATEGORY_KIND, CATEGORY_LABEL, type EventCategory } from '../types/event';
+import {
+  CATEGORY_KIND,
+  CATEGORY_LABEL,
+  type EventCategory,
+  type ScheduleEvent,
+} from '../types/event';
 import {
   parseTimeInput,
   toTimeInput,
+  validateOnce,
   validateSeries,
   type ManualSeries,
   type ManualSeriesInput,
 } from '../lib/manualEvents';
-import { formatDuration } from '../lib/time';
+import { formatDuration, formatRange, parseISODate, toISODate } from '../lib/time';
 import { describeDays } from '../lib/weekdays';
+import ChoiceOption from './ChoiceOption';
+import DatePicker from './DatePicker';
 import WeekdayPicker from './WeekdayPicker';
 
 const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment'];
@@ -16,12 +24,24 @@ const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring'];
 
 interface Props {
   series: ManualSeries[];
+  /** One-off commitments, listed alongside the repeating ones. */
+  singles: ScheduleEvent[];
   defaultOpen: boolean;
   onAdd: (input: ManualSeriesInput) => void;
+  onAddOnce: (input: Omit<ManualSeriesInput, 'weekdays'>, date: Date) => void;
   onDelete: (seriesId: string) => void;
+  onDeleteSingle: (id: string) => void;
 }
 
-export default function ManualEntry({ series, defaultOpen, onAdd, onDelete }: Props) {
+export default function ManualEntry({
+  series,
+  singles,
+  defaultOpen,
+  onAdd,
+  onAddOnce,
+  onDelete,
+  onDeleteSingle,
+}: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('class');
@@ -31,23 +51,41 @@ export default function ManualEntry({ series, defaultOpen, onAdd, onDelete }: Pr
   const [location, setLocation] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
+  /**
+   * Weekly by default, because a timetable is mostly classes. A final, a
+   * one-off lab session or an appointment is the other case, and before this
+   * existed the only way to enter one was to draw it on the grid — which meant
+   * navigating to a date in December to add the exam that lands there.
+   */
+  const [repeats, setRepeats] = useState(true);
+  const [date, setDate] = useState(() => toISODate(new Date()));
+
   const submit = () => {
-    const input: ManualSeriesInput = {
+    const base = {
       title,
       category,
-      weekdays,
       startMinutes: parseTimeInput(start),
       endMinutes: parseTimeInput(end),
       location,
     };
 
-    const invalid = validateSeries(input);
-    if (invalid) {
-      setProblem(invalid);
-      return;
+    if (repeats) {
+      const input: ManualSeriesInput = { ...base, weekdays };
+      const invalid = validateSeries(input);
+      if (invalid) {
+        setProblem(invalid);
+        return;
+      }
+      onAdd(input);
+    } else {
+      const invalid = validateOnce(base);
+      if (invalid) {
+        setProblem(invalid);
+        return;
+      }
+      onAddOnce(base, parseISODate(date));
     }
 
-    onAdd(input);
     setTitle('');
     setLocation('');
     setWeekdays([]);
@@ -116,16 +154,53 @@ export default function ManualEntry({ series, defaultOpen, onAdd, onDelete }: Pr
               </span>
             </label>
 
-            <div className="field field-wide">
-              <span className="field-label">Repeats on</span>
-              <WeekdayPicker
-                value={weekdays}
-                onChange={(next) => {
-                  setWeekdays(next);
+            <fieldset className="repeat-choice field-wide">
+              <legend className="field-label">Does this repeat?</legend>
+              <ChoiceOption
+                on={repeats}
+                onSelect={() => {
+                  setRepeats(true);
                   setProblem(null);
                 }}
+                name="manual-repeats"
+                title="Every week"
+                sub="On the days you pick"
               />
-            </div>
+              <ChoiceOption
+                on={!repeats}
+                onSelect={() => {
+                  setRepeats(false);
+                  setProblem(null);
+                }}
+                name="manual-repeats"
+                title="Just once"
+                sub="On one date — a final, an appointment"
+              />
+            </fieldset>
+
+            {repeats ? (
+              <div className="field field-wide">
+                <span className="field-label">Repeats on</span>
+                <WeekdayPicker
+                  value={weekdays}
+                  onChange={(next) => {
+                    setWeekdays(next);
+                    setProblem(null);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="field field-wide">
+                <span className="field-label">Date</span>
+                <DatePicker
+                  value={date}
+                  onChange={(next) => {
+                    setDate(next);
+                    setProblem(null);
+                  }}
+                />
+              </div>
+            )}
 
             <label className="field">
               <span className="field-label">Starts</span>
@@ -173,8 +248,42 @@ export default function ManualEntry({ series, defaultOpen, onAdd, onDelete }: Pr
             </button>
           </div>
 
-          {series.length > 0 && (
+          {(series.length > 0 || singles.length > 0) && (
             <ul className="series-list">
+              {/* One-off commitments are listed here too. A final added in
+                  August sits four months away on the grid, so without this the
+                  panel would give no sign it had worked. */}
+              {singles.map((event) => (
+                <li key={event.id} className="series">
+                  <span
+                    className={`series-rail ${CATEGORY_KIND[event.category]}`}
+                    aria-hidden="true"
+                  />
+                  <span className="series-main">
+                    <span className="series-title">{event.title}</span>
+                    <span className="series-meta">
+                      <span className="series-once">Once</span>
+                      {event.start.toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}{' '}
+                      · {formatRange(event.start, event.end)}
+                      {event.location ? ` · ${event.location}` : ''} ·{' '}
+                      {CATEGORY_LABEL[event.category]}
+                    </span>
+                  </span>
+                  <button
+                    className="icon-btn danger"
+                    onClick={() => onDeleteSingle(event.id)}
+                    aria-label={`Remove ${event.title}`}
+                    title="Remove"
+                  >
+                    <TrashGlyph />
+                  </button>
+                </li>
+              ))}
+
               {series.map((s) => (
                 <li key={s.seriesId} className="series">
                   <span className={`series-rail ${CATEGORY_KIND[s.category]}`} aria-hidden="true" />

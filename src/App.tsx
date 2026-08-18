@@ -11,6 +11,7 @@ import {
   createSingleCommitment,
   expandManualSeries,
   seriesEndDate,
+  singleCommitments,
   summarizeManualSeries,
   type CommitmentValues,
   type ManualSeriesInput,
@@ -39,6 +40,7 @@ import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
 import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
+import SyllabusImport from './components/SyllabusImport';
 import SyncStatus from './components/SyncStatus';
 import TaskList from './components/TaskList';
 import WeekStrip from './components/WeekStrip';
@@ -141,6 +143,32 @@ export default function App() {
 
   const today = useMemo(() => startOfDay(now), [now]);
   const isToday = sameDay(selected, today);
+
+  /** A commitment on one specific date, entered rather than drawn on the grid. */
+  const addSingle = useCallback(
+    (input: Omit<ManualSeriesInput, 'weekdays'>, date: Date) => {
+      snapshotRef.current(`adding ${input.title.trim()}`);
+      setEvents((prev) => [
+        ...prev,
+        createSingleCommitment(
+          {
+            title: input.title,
+            category: input.category,
+            location: input.location,
+            startMinutes: input.startMinutes,
+            endMinutes: input.endMinutes,
+          },
+          date,
+        ),
+      ]);
+    },
+    [],
+  );
+
+  const deleteEvent = useCallback((id: string) => {
+    snapshotRef.current('removing a commitment');
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+  }, []);
 
   const addSeries = useCallback(
     (input: ManualSeriesInput) => {
@@ -326,6 +354,7 @@ export default function App() {
   const conflicts = useMemo(() => detectConflicts(dayEvents), [dayEvents]);
 
   const manualSeries = useMemo(() => summarizeManualSeries(events), [events]);
+  const manualSingles = useMemo(() => singleCommitments(events), [events]);
 
   // Editing wins if both are somehow pending — you can't drag a new block and
   // click an existing one at the same time.
@@ -354,6 +383,28 @@ export default function App() {
     },
     [],
   );
+
+  /**
+   * Bulk add from a syllabus import.
+   *
+   * Anything already sitting on the same day with the same title is dropped,
+   * so re-importing a corrected syllabus tops up the calendar instead of
+   * doubling every date on it.
+   */
+  const addMarkers = useCallback((incoming: DayMarker[]) => {
+    setMarkers((prev) => {
+      const seen = new Set(
+        prev.map((m) => `${m.year}-${m.month}-${m.day}-${m.title.toLowerCase()}`),
+      );
+      const fresh = incoming.filter((m) => {
+        const key = `${m.year}-${m.month}-${m.day}-${m.title.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return [...prev, ...fresh];
+    });
+  }, []);
 
   const deleteMarker = useCallback((id: string) => {
     setMarkers((prev) => prev.filter((m) => m.id !== id));
@@ -427,65 +478,78 @@ export default function App() {
         </div>
       </header>
 
-      <ManualEntry
-        series={manualSeries}
-        defaultOpen={events.length === 0}
-        onAdd={addSeries}
-        onDelete={deleteSeries}
-      />
+      <div className="layout">
+        <main className="layout-main">
+          <ManualEntry
+            series={manualSeries}
+            singles={manualSingles}
+            defaultOpen={events.length === 0}
+            onAdd={addSeries}
+            onAddOnce={addSingle}
+            onDelete={deleteSeries}
+            onDeleteSingle={deleteEvent}
+          />
 
-      <ImportantDates
-        markers={markers}
-        holidayCount={usFederalHolidays(selected.getFullYear()).length}
-        showHolidays={showHolidays}
-        onToggleHolidays={setShowHolidays}
-        onAdd={addMarker}
-        onDelete={deleteMarker}
-      />
+          <ImportantDates
+            markers={markers}
+            holidayCount={usFederalHolidays(selected.getFullYear()).length}
+            showHolidays={showHolidays}
+            onToggleHolidays={setShowHolidays}
+            onAdd={addMarker}
+            onDelete={deleteMarker}
+          />
 
-      <DayNotes markers={dayMarkers} />
+          <SyllabusImport onAdd={addMarkers} />
 
-      {/* The grid always renders. An empty schedule is a real, usable state —
-          it is the surface you drag on to build one, not an error to explain. */}
-      <StatTiles
-        events={dayEvents}
-        conflicts={conflicts}
-        freeWindows={freeWindows}
-        now={now}
-        isToday={isToday}
-      />
+          <DayNotes markers={dayMarkers} />
 
-      <WeekStrip
-        events={events}
-        selected={selected}
-        today={today}
-        onSelect={setSelected}
-        onShiftWeek={(delta) => setSelected((d) => addDays(d, delta * 7))}
-        markersOn={markersForDate}
-      />
+          {/* The grid always renders. An empty schedule is a real, usable state —
+              it is the surface you drag on to build one, not an error to explain. */}
+          <StatTiles
+            events={dayEvents}
+            conflicts={conflicts}
+            freeWindows={freeWindows}
+            now={now}
+            isToday={isToday}
+          />
 
-      <DayGrid
-        key={+selected}
-        events={dayEvents}
-        conflicts={conflicts}
-        freeWindows={freeWindows}
-        now={isToday ? now : null}
-        onRequestDelete={setPendingDelete}
-        undoLabel={undoLabel}
-        onUndo={undo}
-        onRequestCreate={setPendingCreate}
-        onRequestEdit={setPendingEdit}
-      />
+          <WeekStrip
+            events={events}
+            selected={selected}
+            today={today}
+            onSelect={setSelected}
+            onShiftWeek={(delta) => setSelected((d) => addDays(d, delta * 7))}
+            markersOn={markersForDate}
+          />
 
-      {/* Standalone by design: tasks that aren't tied to a time slot shouldn't
-          require a schedule to have been imported first. */}
-      <TaskList
-        tasks={tasks}
-        onAdd={addTask}
-        onToggle={toggleTask}
-        onNotesChange={setTaskNotes}
-        onDelete={deleteTask}
-      />
+          <DayGrid
+            key={+selected}
+            events={dayEvents}
+            conflicts={conflicts}
+            freeWindows={freeWindows}
+            now={isToday ? now : null}
+            onRequestDelete={setPendingDelete}
+            undoLabel={undoLabel}
+            onUndo={undo}
+            onRequestCreate={setPendingCreate}
+            onRequestEdit={setPendingEdit}
+          />
+        </main>
+
+        {/* Standalone by design: tasks that aren't tied to a time slot shouldn't
+            require a schedule to exist first. In the margin it stays visible
+            while you scroll the day, which is the point of moving it here —
+            a to-do list you have to scroll to is a to-do list you forget. */}
+        <aside className="layout-side">
+          <TaskList
+            tasks={tasks}
+            onAdd={addTask}
+            onToggle={toggleTask}
+            onNotesChange={setTaskNotes}
+            onDelete={deleteTask}
+          />
+        </aside>
+      </div>
 
       <CommitmentDialog
         target={dialogTarget}

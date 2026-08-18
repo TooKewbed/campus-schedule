@@ -7,9 +7,10 @@ import {
   toTimeInput,
   type CommitmentValues,
 } from '../lib/manualEvents';
-import { addDays, formatDuration, startOfDay } from '../lib/time';
+import { addDays, formatDuration, parseISODate, startOfDay, toISODate } from '../lib/time';
 import { describeDays } from '../lib/weekdays';
 import WeekdayPicker from './WeekdayPicker';
+import ChoiceOption from './ChoiceOption';
 import SegmentedControl from './SegmentedControl';
 import type { DraftRange } from './DayGrid';
 
@@ -276,14 +277,14 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
           <>
             <fieldset className="repeat-choice">
               <legend className="field-label">Does this repeat?</legend>
-              <Choice
+              <ChoiceOption
                 on={repeats}
                 onSelect={() => setRepeats(true)}
                 name="repeats"
                 title="Every week"
                 sub="On the days you pick"
               />
-              <Choice
+              <ChoiceOption
                 on={!repeats}
                 onSelect={() => setRepeats(false)}
                 name="repeats"
@@ -338,14 +339,14 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
           <>
             <fieldset className="repeat-choice">
               <legend className="field-label">Apply changes to</legend>
-              <Choice
+              <ChoiceOption
                 on={scope === 'one'}
                 onSelect={() => setScope('one')}
                 name="scope"
                 title="This one only"
                 sub="Splits it off from the series"
               />
-              <Choice
+              <ChoiceOption
                 on={scope === 'all'}
                 onSelect={() => setScope('all')}
                 name="scope"
@@ -411,38 +412,3 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   );
 }
 
-function Choice({
-  on,
-  onSelect,
-  name,
-  title,
-  sub,
-}: {
-  on: boolean;
-  onSelect: () => void;
-  name: string;
-  title: string;
-  sub: string;
-}) {
-  return (
-    <label className={`repeat-option${on ? ' on' : ''}`}>
-      <input type="radio" name={name} checked={on} onChange={onSelect} />
-      <span>
-        <strong>{title}</strong>
-        <span className="repeat-sub">{sub}</span>
-      </span>
-    </label>
-  );
-}
-
-/** Parsed from parts — `new Date(string)` reads YYYY-MM-DD as UTC midnight. */
-function parseISODate(value: string, fallback: Date): Date {
-  const [y, m, d] = value.split('-').map(Number);
-  if (!y || !m || !d) return startOfDay(fallback);
-  return new Date(y, m - 1, d);
-}
-
-function toISODate(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}

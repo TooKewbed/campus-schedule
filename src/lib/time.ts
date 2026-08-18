@@ -69,3 +69,23 @@ export function formatDayHeading(d: Date): string {
     day: 'numeric',
   });
 }
+
+/**
+ * The YYYY-MM-DD form used by date inputs and the DatePicker.
+ *
+ * Built from local parts rather than toISOString(), which converts to UTC —
+ * anywhere west of Greenwich that shifts an evening date back onto the day
+ * before, which is exactly the class of bug nobody notices until a deadline
+ * lands wrong.
+ */
+export function toISODate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Parsed from parts, for the same reason: `new Date('2026-12-15')` is UTC midnight. */
+export function parseISODate(value: string, fallback: Date = new Date()): Date {
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return startOfDay(fallback);
+  return new Date(y, m - 1, d);
+}

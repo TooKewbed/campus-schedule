@@ -128,7 +128,15 @@ export default function ImportantDates({
                   <span className="series-rail marker" aria-hidden="true" />
                   <span className="series-main">
                     <span className="series-title">{marker.title}</span>
-                    <span className="series-meta">{describeMarkerDate(marker)}</span>
+                    <span className="series-meta">
+                      {/* "Exam 1" means nothing once three courses have been
+                          imported, so the course leads the line when there is
+                          one. */}
+                      {marker.courseCode && (
+                        <span className="series-course">{marker.courseCode}</span>
+                      )}
+                      {describeMarkerDate(marker)}
+                    </span>
                   </span>
                   <button
                     className="icon-btn danger"

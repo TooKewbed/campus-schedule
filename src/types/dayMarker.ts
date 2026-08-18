@@ -16,7 +16,14 @@ export interface DayMarker {
   day: number;
   /** null means it repeats every year — birthdays, anniversaries. */
   year: number | null;
-  source: 'holiday' | 'manual';
+  source: 'holiday' | 'manual' | 'syllabus';
+  /**
+   * Set for dates pulled out of a syllabus, so "CHEM 101" can be shown beside
+   * the title and every date from one course can be found again later. Kept
+   * separate from the title rather than prefixed into it: a title the user
+   * edits should not be able to break which course a date belongs to.
+   */
+  courseCode?: string;
 }
 
 export function createMarker(

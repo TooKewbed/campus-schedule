@@ -1,4 +1,4 @@
-import type { EventCategory, ScheduleEvent } from '../types/event';
+import { byStart, type EventCategory, type ScheduleEvent } from '../types/event';
 import { extractCourseCode } from './categorize';
 import { addDays, startOfDay } from './time';
 
@@ -26,8 +26,7 @@ export interface ManualSeriesInput {
 export function validateSeries(input: ManualSeriesInput): string | null {
   if (!input.title.trim()) return 'Give it a name.';
   if (input.weekdays.length === 0) return 'Pick at least one day of the week.';
-  if (input.endMinutes <= input.startMinutes) return 'The end time must be after the start time.';
-  return null;
+  return validateCore(input);
 }
 
 export function expandManualSeries(
@@ -212,4 +211,31 @@ export function seriesEndDate(events: ScheduleEvent[], seriesId: string): Date |
     if (!latest || e.start > latest) latest = e.start;
   }
   return latest ? startOfDay(latest) : null;
+}
+
+/** Checks that apply whether or not the commitment repeats. */
+function validateCore(input: {
+  title: string;
+  startMinutes: number;
+  endMinutes: number;
+}): string | null {
+  if (!input.title.trim()) return 'Give it a name.';
+  if (input.endMinutes <= input.startMinutes) return 'The end time must be after the start time.';
+  return null;
+}
+
+/** A one-off commitment on a specific date — a final, a doctor's appointment. */
+export function validateOnce(input: Omit<ManualSeriesInput, 'weekdays'>): string | null {
+  return validateCore(input);
+}
+
+/**
+ * One-off commitments, for listing beside the recurring ones.
+ *
+ * The absence of a seriesId is what makes an event a one-off, which is the same
+ * signal the delete dialog uses to decide whether to offer "this occurrence or
+ * the whole series".
+ */
+export function singleCommitments(events: ScheduleEvent[]): ScheduleEvent[] {
+  return events.filter((e) => e.source === 'manual' && !e.seriesId).sort(byStart);
 }

@@ -158,7 +158,55 @@ body {
 
 button { font: inherit; color: inherit; }
 
-.app { max-width: 1060px; margin: 0 auto; padding: 0 20px 72px; }
+.app { max-width: 1340px; margin: 0 auto; padding: 0 20px 72px; }
+
+/* ----------------------------------------------------------------- layout -- */
+/* Schedule in the main column, to-do list in the right margin.
+
+   The list is sticky rather than scrolling away with the page. That is the
+   whole reason for moving it out of the flow: a to-do list you have to go
+   looking for is one you stop looking at. */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  /* Sticky needs the sidebar to be its own height, not stretched to match the
+     schedule — a full-height item has no room to move within its row. */
+  align-items: start;
+}
+
+/* min-width: 0 lets the grid actually shrink this column. Without it the day
+   grid's intrinsic width wins and the whole page gains a horizontal scrollbar. */
+.layout-main { min-width: 0; }
+
+.layout-side {
+  position: sticky;
+  /* Clears the sticky toolbar instead of sliding underneath it. */
+  top: 84px;
+  /* A long list scrolls inside the margin rather than running off-screen,
+     where the bottom of it would be unreachable. */
+  max-height: calc(100dvh - 108px);
+  overflow-y: auto;
+  /* Reaching the end of the list shouldn't start scrolling the page behind it. */
+  overscroll-behavior: contain;
+}
+
+/* It leads its own column now, so it no longer needs the gap that separated it
+   from the schedule when it sat underneath. */
+.layout-side .tasks { margin-top: 0; }
+
+/* Below this the margin is too narrow to be a margin; the list returns to the
+   flow underneath the schedule, where it started. */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .layout-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .layout-side .tasks { margin-top: 26px; }
+}
 
 /* --------------------------------------------------------------- toolbar -- */
 /* Translucent chrome with content scrolling underneath — not an opaque strip. */
@@ -1168,6 +1216,9 @@ footer {
 .day-note-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .day-note.holiday .day-note-dot { background: var(--indigo); }
 .day-note.manual .day-note-dot { background: var(--pink); }
+/* Syllabus dates get their own colour so an extracted exam is visibly not
+   something you typed — the two have different trustworthiness. */
+.day-note.syllabus .day-note-dot { background: var(--orange); }
 
 .series-rail.marker { background: var(--pink); }
 
@@ -1789,3 +1840,217 @@ dialog.confirm.sheet { max-width: 460px; }
 :root:not([data-theme='light']) .signin-submit {
   color: #fff;
 }
+
+/* -------------------------------------------------------------- syllabus -- */
+
+.syllabus { margin-top: 26px; }
+
+.syllabus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 0 4px;
+}
+
+.syllabus-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.syllabus-head h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.syllabus-head-sub { font-size: 13px; letter-spacing: 0; color: var(--label-secondary); }
+
+.syllabus-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.syllabus-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.syllabus-error { margin: 0; font-size: 13px; line-height: 1.4; color: var(--red); }
+
+.syllabus-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.syllabus-empty p { margin: 0; font-size: 14px; line-height: 1.45; }
+
+/* A rule with the label sitting in a gap in it. */
+.syllabus-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--label-tertiary);
+}
+.syllabus-or::before,
+.syllabus-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--separator);
+}
+
+/* -------------------------------------------------------------- dropzone -- */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 16px;
+  border: 1.5px dashed var(--separator-strong);
+  border-radius: var(--r-md);
+  background: var(--bg-card-inset);
+  text-align: center;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+
+.dropzone.over {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 8%, var(--bg-card-inset));
+}
+
+.dropzone-main { margin: 0; font-size: 14px; color: var(--label-secondary); }
+
+/* ---------------------------------------------------------------- review -- */
+
+.review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-count { font-size: 13px; color: var(--label-secondary); }
+.review-bulk { display: flex; gap: 10px; }
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Long syllabi produce long lists; keep the Add button reachable. */
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: var(--r-sm);
+  /* Unticked rows recede rather than disappear — still readable, clearly not
+     going to be added. */
+  opacity: 0.5;
+  transition: opacity var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+
+.review-row.on { opacity: 1; }
+.review-row.on:nth-child(odd) { background: var(--bg-card-inset); }
+
+.review-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+
+.review-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+
+.review-date {
+  font-size: 13px;
+  font-weight: 590;
+  font-variant-numeric: tabular-nums;
+  color: var(--label);
+}
+
+.review-span,
+.review-flag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--fill-tertiary);
+  color: var(--label-secondary);
+}
+
+/* The one row state worth colouring: a date found with nothing to suggest what
+   it is. It starts unticked, and this says why. */
+.review-flag { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+
+.review-title {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--fill-tertiary);
+  color: var(--label);
+}
+
+.review-title:focus {
+  outline: none;
+  border-color: var(--blue);
+  background: var(--bg-card);
+}
+
+/* The line the date was read from. Small and quiet — it is there for when a row
+   looks wrong and you need to see why, not for normal reading. */
+.review-context {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--label-tertiary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ------------------------------------------------------------- kind chips -- */
+
+.kind-chip {
+  font-size: 11px;
+  font-weight: 590;
+  letter-spacing: 0.01em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.kind-exam       { background: color-mix(in srgb, var(--red) 16%, transparent);    color: var(--red); }
+.kind-quiz       { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+.kind-assignment { background: color-mix(in srgb, var(--blue) 15%, transparent);   color: var(--blue); }
+.kind-project    { background: color-mix(in srgb, var(--purple) 16%, transparent); color: var(--purple); }
+.kind-break      { background: color-mix(in srgb, var(--green) 16%, transparent);  color: var(--green); }
+.kind-other      { background: var(--fill-tertiary); color: var(--label-secondary); }
+
+/* Course badge on a syllabus-sourced date, inside the series meta line. */
+.series-course {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--fill-tertiary);
+  font-size: 11px;
+  font-weight: 590;
+  color: var(--label-secondary);
+}
+
+/* Marks a one-off commitment in the hand-added list, where every other row is a
+   weekly series and would otherwise be read as one. */
+.series-once {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--teal) 18%, transparent);
+  font-size: 11px;
+  font-weight: 590;
+  color: var(--teal);
+}
+
+/* The repeat choice spans the whole form row inside the manual entry grid,
+   where it sits between the type and the day/date field it controls. */
+.manual-form .repeat-choice { margin: 0; }

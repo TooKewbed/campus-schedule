@@ -56,6 +56,7 @@ interface MarkerRow {
   day: number;
   year: number | null;
   source: string;
+  course_code: string | null;
 }
 
 /* --------------------------------------------------------------- mapping -- */
@@ -129,6 +130,7 @@ function markerToRow(userId: string, m: DayMarker): MarkerRow {
     day: m.day,
     year: m.year,
     source: m.source,
+    course_code: m.courseCode ?? null,
   };
 }
 
@@ -139,7 +141,10 @@ function rowToMarker(r: MarkerRow): DayMarker {
     month: r.month,
     day: r.day,
     year: r.year,
-    source: r.source === 'holiday' ? 'holiday' : 'manual',
+    // Anything unrecognised falls back to 'manual' so a row written by a newer
+    // build still renders here rather than vanishing.
+    source: r.source === 'holiday' || r.source === 'syllabus' ? r.source : 'manual',
+    courseCode: r.course_code ?? undefined,
   };
 }
 
@@ -265,6 +270,10 @@ export function pushTasks(
  * Only hand this the user's own markers. Federal holidays are computed per
  * displayed year and must never be written — storing them would freeze a
  * generated list into rows that go stale the moment the year rolls over.
+ *
+ * Everything that is not a generated holiday syncs, so this excludes by what it
+ * knows to be derived rather than listing what is allowed. Written the other
+ * way round, adding a marker source later would silently stop it syncing.
  */
 export function pushMarkers(
   supabase: SupabaseClient,
@@ -272,7 +281,7 @@ export function pushMarkers(
   prev: DayMarker[],
   next: DayMarker[],
 ): Promise<void> {
-  const mine = (list: DayMarker[]) => list.filter((m) => m.source === 'manual');
+  const mine = (list: DayMarker[]) => list.filter((m) => m.source !== 'holiday');
   return push(supabase, 'day_markers', mine(prev), mine(next), (m) => markerToRow(userId, m));
 }
 

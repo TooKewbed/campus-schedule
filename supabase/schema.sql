@@ -86,10 +86,11 @@ create table if not exists public.day_markers (
   day     smallint not null,
   year    integer,
   source  text    not null default 'manual',
+  course_code text,
   primary key (user_id, id),
   constraint day_markers_month_valid check (month between 1 and 12),
   constraint day_markers_day_valid   check (day between 1 and 31),
-  constraint day_markers_source_valid check (source in ('holiday', 'manual'))
+  constraint day_markers_source_valid check (source in ('holiday', 'manual', 'syllabus'))
 );
 
 -- ------------------------------------------------------------ preferences --

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { addDays, sameDay, startOfDay, startOfWeek } from '../lib/time';
+import { addDays, parseISODate, sameDay, startOfDay, startOfWeek, toISODate } from '../lib/time';
 import { WEEKDAYS } from '../lib/weekdays';
 
 interface Props {
@@ -309,23 +309,6 @@ function clampToMonth(day: Date, month: Date): Date {
   return new Date(month.getFullYear(), month.getMonth(), Math.min(day.getDate(), lastDay));
 }
 
-/**
- * Parsed from parts, never `new Date(string)` — the latter reads YYYY-MM-DD as
- * UTC midnight and lands on the previous day anywhere west of GMT.
- */
-function parseISODate(value: string): Date {
-  const [y, m, d] = value.split('-').map(Number);
-  if (!y || !m || !d) return startOfDay(new Date());
-  return new Date(y, m - 1, d);
-}
-
-function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
 
 function longDate(d: Date): string {
   return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
