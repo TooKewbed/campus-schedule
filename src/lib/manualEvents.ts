@@ -1,0 +1,216 @@
+import type { EventCategory, ScheduleEvent } from '../types/event';
+import { extractCourseCode } from './categorize';
+import { addDays, startOfDay } from './time';
+
+/**
+ * Manually entered commitments.
+ *
+ * A hand-entered class is a weekly recurring series, so it expands into
+ * individual occurrences exactly like an RRULE from an .ics file does. Both
+ * paths produce plain ScheduleEvents, which means conflict detection, free-time
+ * math and layout never need to know where an event came from — only `source`
+ * distinguishes them, and only so an import can avoid clobbering manual work.
+ */
+export interface ManualSeriesInput {
+  title: string;
+  category: EventCategory;
+  /** JS getDay() values: 0 = Sunday ... 6 = Saturday. */
+  weekdays: number[];
+  startMinutes: number;
+  endMinutes: number;
+  location?: string;
+  /** Last day the series runs. Omitted means "as far as the window allows". */
+  until?: Date;
+}
+
+/** Returns a human-readable problem, or null when the input is usable. */
+export function validateSeries(input: ManualSeriesInput): string | null {
+  if (!input.title.trim()) return 'Give it a name.';
+  if (input.weekdays.length === 0) return 'Pick at least one day of the week.';
+  if (input.endMinutes <= input.startMinutes) return 'The end time must be after the start time.';
+  return null;
+}
+
+export function expandManualSeries(
+  input: ManualSeriesInput,
+  rangeStart: Date,
+  rangeEnd: Date,
+): ScheduleEvent[] {
+  const seriesId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const days = new Set(input.weekdays);
+  const title = input.title.trim();
+  const location = input.location?.trim() || undefined;
+  const courseCode = extractCourseCode(title);
+
+  // An explicit end date can only shorten the window, never extend it past
+  // what the caller is prepared to hold.
+  const stop =
+    input.until && startOfDay(input.until) < startOfDay(rangeEnd)
+      ? startOfDay(input.until)
+      : rangeEnd;
+
+  const events: ScheduleEvent[] = [];
+  for (let day = startOfDay(rangeStart); day <= stop; day = addDays(day, 1)) {
+    if (!days.has(day.getDay())) continue;
+
+    const start = atMinutes(day, input.startMinutes);
+    const end = atMinutes(day, input.endMinutes);
+    events.push({
+      id: `${seriesId}-${start.getTime()}`,
+      seriesId,
+      title,
+      start,
+      end,
+      category: input.category,
+      location,
+      courseCode,
+      source: 'manual',
+      recurring: true,
+    });
+  }
+  return events;
+}
+
+/** One row per manually added series, rebuilt from its expanded occurrences. */
+export interface ManualSeries {
+  seriesId: string;
+  title: string;
+  category: EventCategory;
+  location?: string;
+  weekdays: number[];
+  startMinutes: number;
+  endMinutes: number;
+  occurrences: number;
+}
+
+export function summarizeManualSeries(events: ScheduleEvent[]): ManualSeries[] {
+  const groups = new Map<string, ScheduleEvent[]>();
+  for (const event of events) {
+    if (event.source !== 'manual' || !event.seriesId) continue;
+    const bucket = groups.get(event.seriesId);
+    if (bucket) bucket.push(event);
+    else groups.set(event.seriesId, [event]);
+  }
+
+  const series: ManualSeries[] = [];
+  for (const [seriesId, occurrences] of groups) {
+    const first = occurrences.reduce((a, b) => (a.start <= b.start ? a : b));
+    series.push({
+      seriesId,
+      title: first.title,
+      category: first.category,
+      location: first.location,
+      weekdays: [...new Set(occurrences.map((e) => e.start.getDay()))].sort(),
+      startMinutes: minutesOf(first.start),
+      endMinutes: minutesOf(first.end),
+      occurrences: occurrences.length,
+    });
+  }
+  return series.sort((a, b) => a.startMinutes - b.startMinutes || a.title.localeCompare(b.title));
+}
+
+/** "09:30" from an <input type="time"> to minutes since midnight. */
+export function parseTimeInput(value: string): number {
+  const [h, m] = value.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+  return h * 60 + m;
+}
+
+export function toTimeInput(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function atMinutes(day: Date, minutes: number): Date {
+  const d = new Date(day);
+  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return d;
+}
+
+function minutesOf(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/**
+ * A single, non-repeating commitment on one specific day.
+ *
+ * Left without a seriesId on purpose: that absence is what tells the delete
+ * dialog to offer a plain "Delete" instead of the this-one/all-occurrences
+ * choice that only makes sense for a series.
+ */
+export function createSingleCommitment(
+  input: Omit<ManualSeriesInput, 'weekdays'>,
+  date: Date,
+): ScheduleEvent {
+  const title = input.title.trim();
+  const start = atMinutes(date, input.startMinutes);
+
+  return {
+    id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    start,
+    end: atMinutes(date, input.endMinutes),
+    category: input.category,
+    location: input.location?.trim() || undefined,
+    courseCode: extractCourseCode(title),
+    source: 'manual',
+    recurring: false,
+  };
+}
+
+/** Fields an existing commitment can be edited to. */
+export interface CommitmentValues {
+  title: string;
+  category: EventCategory;
+  location: string;
+  startMinutes: number;
+  endMinutes: number;
+}
+
+/**
+ * Re-time and re-label one occurrence, keeping it on its own date.
+ *
+ * Applied across a series this moves every occurrence to the new time without
+ * touching which days it falls on, which is what "change all" should mean.
+ */
+export function applyValues(event: ScheduleEvent, values: CommitmentValues): ScheduleEvent {
+  const title = values.title.trim();
+  const day = startOfDay(event.start);
+
+  return {
+    ...event,
+    title,
+    category: values.category,
+    location: values.location.trim() || undefined,
+    courseCode: extractCourseCode(title),
+    start: atMinutes(day, values.startMinutes),
+    end: atMinutes(day, values.endMinutes),
+  };
+}
+
+/** Minutes since midnight for an existing event, for seeding the edit form. */
+export function minutesOfDate(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/** How many occurrences a weekly pattern yields between two dates, inclusive. */
+export function countOccurrences(weekdays: number[], from: Date, until: Date): number {
+  const days = new Set(weekdays);
+  const stop = startOfDay(until);
+  let count = 0;
+  for (let day = startOfDay(from); day <= stop; day = addDays(day, 1)) {
+    if (days.has(day.getDay())) count++;
+  }
+  return count;
+}
+
+/** The last day a series actually runs, from its expanded occurrences. */
+export function seriesEndDate(events: ScheduleEvent[], seriesId: string): Date | null {
+  let latest: Date | null = null;
+  for (const e of events) {
+    if (e.seriesId !== seriesId) continue;
+    if (!latest || e.start > latest) latest = e.start;
+  }
+  return latest ? startOfDay(latest) : null;
+}

@@ -1,0 +1,127 @@
+import type { ScheduleEvent } from '../types/event';
+import type { Task } from '../types/task';
+import type { DayMarker } from '../types/dayMarker';
+
+const KEY = 'campus-schedule:events:v1';
+
+/** Dates don't survive JSON, so they go over the wire as ISO strings. */
+type StoredEvent = Omit<ScheduleEvent, 'start' | 'end'> & {
+  start: string;
+  end: string;
+};
+
+export function saveEvents(events: ScheduleEvent[]): void {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(events));
+  } catch {
+    // Private browsing or a full quota — not worth interrupting the user over.
+  }
+}
+
+export function loadEvents(): ScheduleEvent[] {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return [];
+
+    const parsed: StoredEvent[] = JSON.parse(raw);
+    return parsed
+      .map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }))
+      .filter((e) => !Number.isNaN(e.start.getTime()) && !Number.isNaN(e.end.getTime()));
+  } catch {
+    return [];
+  }
+}
+
+export function clearEvents(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/* ------------------------------------------------------------------ tasks -- */
+
+const TASKS_KEY = 'campus-schedule:tasks:v1';
+
+type StoredTask = Omit<Task, 'createdAt' | 'completedAt' | 'dueDate'> & {
+  createdAt: string;
+  completedAt: string | null;
+  dueDate?: string;
+};
+
+export function saveTasks(tasks: Task[]): void {
+  try {
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  } catch {
+    // Private browsing or a full quota — not worth interrupting the user over.
+  }
+}
+
+export function loadTasks(): Task[] {
+  try {
+    const raw = localStorage.getItem(TASKS_KEY);
+    if (!raw) return [];
+
+    const parsed: StoredTask[] = JSON.parse(raw);
+    return parsed.map((t) => ({
+      ...t,
+      notes: t.notes ?? '',
+      createdAt: reviveDate(t.createdAt) ?? new Date(),
+      completedAt: reviveDate(t.completedAt),
+      dueDate: reviveDate(t.dueDate) ?? undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function reviveDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/* ---------------------------------------------------------------- markers -- */
+
+const MARKERS_KEY = 'campus-schedule:markers:v1';
+const HOLIDAYS_KEY = 'campus-schedule:show-holidays:v1';
+
+export function saveMarkers(markers: DayMarker[]): void {
+  try {
+    localStorage.setItem(MARKERS_KEY, JSON.stringify(markers));
+  } catch {
+    // ignore
+  }
+}
+
+export function loadMarkers(): DayMarker[] {
+  try {
+    const raw = localStorage.getItem(MARKERS_KEY);
+    if (!raw) return [];
+    const parsed: DayMarker[] = JSON.parse(raw);
+    return parsed.filter(
+      (m) => m && typeof m.title === 'string' && m.month >= 1 && m.month <= 12,
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function saveShowHolidays(value: boolean): void {
+  try {
+    localStorage.setItem(HOLIDAYS_KEY, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+}
+
+/** Holidays are on unless the user has turned them off. */
+export function loadShowHolidays(): boolean {
+  try {
+    const raw = localStorage.getItem(HOLIDAYS_KEY);
+    return raw === null ? true : JSON.parse(raw) === true;
+  } catch {
+    return true;
+  }
+}

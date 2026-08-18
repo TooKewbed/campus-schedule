@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily schedule mockup — office hours vs. conflicts</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+
+    --blue:    #2a78d6;
+    --orange:  #eb6834;
+    --aqua:    #1baf7a;
+    --yellow:  #eda100;
+    --violet:  #4a3aa7;
+    --green:   #008300;
+    --critical:#d03b3b;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+
+    --blue:    #3987e5;
+    --orange:  #d95926;
+    --aqua:    #199e70;
+    --yellow:  #c98500;
+    --violet:  #9085e9;
+    --green:   #008300;
+    --critical:#e66767;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .title-block h1 { font-size: 20px; font-weight: 650; margin: 0 0 4px; }
+  .title-block p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+  .theme-toggle {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+    font-size: 12px; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--text-primary); }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 22px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .swatch { width: 20px; height: 13px; border-radius: 3px; flex: none; }
+  .swatch.fixed { background: var(--blue); }
+  .swatch.flex {
+    background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--aqua) 22%, transparent) 0 3px, transparent 3px 7px);
+    border: 1.5px dashed var(--aqua);
+  }
+  .swatch.conflict { background: var(--surface-1); border: 1.5px solid var(--critical); position: relative; }
+  .swatch.conflict::after {
+    content: "!"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size: 10px; font-weight: 700; color: var(--critical);
+  }
+
+  /* ---------- stat tiles ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 26px; }
+  .stat-tile {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .stat-tile .label { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .stat-tile .value { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; }
+  .stat-tile .sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .stat-tile.warn .value { color: var(--critical); }
+
+  /* ---------- week strip ---------- */
+  .week-strip { display: flex; gap: 6px; margin-bottom: 14px; }
+  .day-chip {
+    flex: 1; text-align: center; padding: 8px 4px; border-radius: 8px;
+    font-size: 12px; color: var(--text-secondary); border: 1px solid transparent;
+  }
+  .day-chip .dow { display:block; font-size: 10.5px; color: var(--muted); margin-bottom: 2px; }
+  .day-chip .dom { font-weight: 600; font-size: 13px; }
+  .day-chip.today { background: color-mix(in srgb, var(--blue) 12%, var(--surface-1)); border-color: color-mix(in srgb, var(--blue) 35%, transparent); color: var(--text-primary); }
+
+  /* ---------- lane headers ---------- */
+  .lane-headers { display: grid; grid-template-columns: 56px 1fr 200px; gap: 0; margin-bottom: 6px; }
+  .lane-headers .lh { font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .lane-headers .lh.fixed-h { padding-left: 2px; }
+
+  /* ---------- board ---------- */
+  .board { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 16px 20px; }
+  .schedule { display: grid; grid-template-columns: 56px 1fr 200px; column-gap: 12px; position: relative; }
+
+  .time-axis { position: relative; }
+  .time-axis .hr {
+    position: absolute; left: 0; right: 0; font-size: 11px; color: var(--muted);
+    transform: translateY(-6px);
+  }
+
+  .lane { position: relative; border-left: 1px solid var(--gridline); }
+  .lane-fixed { border-right: 1px dashed var(--gridline); padding-right: 12px; }
+  .lane-flex { padding-left: 0; }
+
+  .gridline {
+    position: absolute; left: 0; right: 0; height: 1px; background: var(--gridline);
+  }
+
+  /* fixed event block */
+  .ev {
+    position: absolute; border-radius: 8px; padding: 6px 9px; overflow: hidden;
+    color: #fff; font-size: 12px; line-height: 1.3;
+  }
+  .ev .t { font-weight: 650; font-size: 12.5px; }
+  .ev .m { opacity: .88; font-size: 11px; margin-top: 1px; }
+  .ev.half { width: calc(50% - 3px); }
+  .ev.half.right { left: calc(50% + 3px); }
+  .ev.half.left { left: 0; }
+
+  .ev.blue   { background: var(--blue); }
+  .ev.orange { background: var(--orange); }
+  .ev.violet { background: var(--violet); }
+  .ev.green  { background: var(--green); }
+
+  .ev.conflicting { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3.5px var(--critical); }
+
+  .conflict-chip {
+    position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 650; color: var(--critical); transform: translateY(-19px);
+  }
+  .conflict-chip .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--critical); color: #fff; display:flex; align-items:center; justify-content:center; font-size: 10px; }
+
+  /* free-time ghost block, fixed lane */
+  .free {
+    position: absolute; left: 0; right: 0; border: 1px dashed var(--gridline); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--muted);
+  }
+
+  /* flexible event block — narrow lane, dashed, textured, never overlaps the fixed lane */
+  .ev-flex {
+    position: absolute; left: 0; right: 0; border-radius: 8px; padding: 6px 9px;
+    font-size: 11.5px; line-height: 1.3; color: var(--text-primary);
+    border: 1.5px dashed var(--flex-color);
+    background:
+      repeating-linear-gradient(45deg,
+        color-mix(in srgb, var(--flex-color) 16%, transparent) 0 3px,
+        transparent 3px 8px),
+      color-mix(in srgb, var(--flex-color) 7%, var(--surface-1));
+  }
+  .ev-flex .t { font-weight: 650; color: var(--flex-color-text, var(--text-primary)); }
+  .ev-flex .m { color: var(--text-secondary); margin-top: 1px; font-size: 11px; }
+  .ev-flex.aqua   { --flex-color: var(--aqua); }
+  .ev-flex.yellow { --flex-color: var(--yellow); }
+
+  .now-line { position: absolute; left: 0; right: 0; height: 0; z-index: 5; }
+  .now-line .bar { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--blue); }
+  .now-line .knob {
+    position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--blue); box-shadow: 0 0 0 2px var(--surface-1);
+  }
+  .now-line .lbl {
+    position: absolute; left: 6px; top: -20px; font-size: 10px; font-weight: 700; color: #fff;
+    background: var(--blue); padding: 2px 6px; border-radius: 5px; white-space: nowrap;
+  }
+
+  footer { margin-top: 22px; font-size: 12px; color: var(--muted); text-align: center; }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .schedule, .lane-headers { grid-template-columns: 44px 1fr 140px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="title-block">
+      <h1>Tuesday, August 18 · Fall semester</h1>
+      <p>Sketch: how a day could look — office hours sit in their own lane so they never read as a double-booking.</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle">Dark mode</button>
+  </header>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch fixed"></span> Fixed commitment (class, work, exam)</div>
+    <div class="legend-item"><span class="swatch flex"></span> Flexible / optional (office hours, study groups)</div>
+    <div class="legend-item"><span class="swatch conflict"></span> Real scheduling conflict</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-tile">
+      <div class="label">Right now</div>
+      <div class="value">Free</div>
+      <div class="sub">Calculus II starts in 45m</div>
+    </div>
+    <div class="stat-tile">
+      <div class="label">Next up</div>
+      <div class="value">Calculus II</div>
+      <div class="sub">11:00 AM · Root Hall 204</div>
+    </div>
+    <div class="stat-tile">
+      <div class="label">Free time today</div>
+      <div class="value">7h 25m</div>
+      <div class="sub">across 4 open windows</div>
+    </div>
+    <div class="stat-tile warn">
+      <div class="label">Conflicts</div>
+      <div class="value">1</div>
+      <div class="sub">Lab overlaps your shift</div>
+    </div>
+  </div>
+
+  <div class="week-strip">
+    <div class="day-chip"><span class="dow">MON</span><span class="dom">17</span></div>
+    <div class="day-chip today"><span class="dow">TUE</span><span class="dom">18</span></div>
+    <div class="day-chip"><span class="dow">WED</span><span class="dom">19</span></div>
+    <div class="day-chip"><span class="dow">THU</span><span class="dom">20</span></div>
+    <div class="day-chip"><span class="dow">FRI</span><span class="dom">21</span></div>
+  </div>
+
+  <div class="lane-headers">
+    <div></div>
+    <div class="lh fixed-h">Classes & commitments</div>
+    <div class="lh">Office hours & flexible</div>
+  </div>
+
+  <div class="board">
+    <div class="schedule" id="scheduleGrid" style="height: 832px;">
+
+      <div class="time-axis" id="timeAxis"></div>
+
+      <div class="lane lane-fixed" id="laneFixed">
+        <!-- gridlines injected by JS -->
+
+        <div class="free" style="top:0px; height:64px;">1h free</div>
+        <div class="free" style="top:117px; height:75px;">1h 10m free</div>
+        <div class="free" style="top:272px; height:112px;">Lunch + free · 1h 45m</div>
+        <div class="free" style="top:608px; height:224px;">3h 30m free</div>
+
+        <div class="ev blue" style="top:64px; height:53px;">
+          <div class="t">Chemistry 101</div>
+          <div class="m">9:00 – 9:50 AM · Lecture Hall B</div>
+        </div>
+
+        <div class="ev orange" style="top:192px; height:80px;">
+          <div class="t">Calculus II</div>
+          <div class="m">11:00 AM – 12:15 PM · Root Hall 204</div>
+        </div>
+
+        <div class="conflict-chip" style="top:416px;">
+          <span class="dot">!</span> Double-booked 2:30 – 3:15 PM
+        </div>
+        <div class="ev violet half left conflicting" style="top:384px; height:80px;">
+          <div class="t">Chem Lab</div>
+          <div class="m">2:00 – 3:15 PM · Science 118</div>
+        </div>
+        <div class="ev green half right conflicting" style="top:416px; height:192px;">
+          <div class="t">Work — Bookstore</div>
+          <div class="m">2:30 – 5:30 PM</div>
+        </div>
+
+        <div class="now-line" style="top:144px;">
+          <div class="bar"></div>
+          <div class="knob"></div>
+          <div class="lbl">Now · 10:15 AM</div>
+        </div>
+      </div>
+
+      <div class="lane lane-flex" id="laneFlex">
+        <div class="ev-flex aqua" style="top:320px; height:64px;">
+          <div class="t">Office Hours — Prof. Chen</div>
+          <div class="m">1:00 – 2:00 PM · optional</div>
+        </div>
+        <div class="ev-flex aqua" style="top:480px; height:64px;">
+          <div class="t">Office Hours — TA Martinez</div>
+          <div class="m">3:30 – 4:30 PM · optional</div>
+        </div>
+        <div class="ev-flex yellow" style="top:736px; height:64px;">
+          <div class="t">Study Group — Physics</div>
+          <div class="m">7:30 – 8:30 PM · optional</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>Mockup only — sample data, not a working app.</footer>
+</div>
+
+<script>
+  // build hour labels + gridlines, 8:00 to 21:00
+  const startHour = 8, endHour = 21, rowH = 64;
+  const axis = document.getElementById('timeAxis');
+  const laneFixed = document.getElementById('laneFixed');
+  const laneFlex = document.getElementById('laneFlex');
+
+  for (let h = startHour; h <= endHour; h++) {
+    const top = (h - startHour) * rowH;
+    const label = document.createElement('div');
+    label.className = 'hr';
+    label.style.top = top + 'px';
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    const ampm = h < 12 || h === 24 ? 'AM' : 'PM';
+    label.textContent = displayHour + (h===startHour||h===endHour? ':00 '+ampm : '');
+    axis.appendChild(label);
+
+    [laneFixed, laneFlex].forEach(lane => {
+      const gl = document.createElement('div');
+      gl.className = 'gridline';
+      gl.style.top = top + 'px';
+      lane.appendChild(gl);
+    });
+  }
+
+  // theme toggle
+  const btn = document.getElementById('themeToggle');
+  btn.addEventListener('click', () => {
+    const root = document.documentElement;
+    const isDark = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    btn.textContent = isDark ? 'Dark mode' : 'Light mode';
+  });
+</script>
+</body>
+</html>
