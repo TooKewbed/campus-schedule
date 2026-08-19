@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { EventCategory, ScheduleEvent } from '../types/event';
+import type { ColorName, EventCategory, ScheduleEvent } from '../types/event';
 import type { DayMarker } from '../types/dayMarker';
 import type { Task } from '../types/task';
 
@@ -34,6 +34,7 @@ interface EventRow {
   source: string;
   series_id: string | null;
   recurring: boolean;
+  color: string | null;
 }
 
 interface TaskRow {
@@ -75,6 +76,7 @@ function eventToRow(userId: string, e: ScheduleEvent): EventRow {
     source: e.source,
     series_id: e.seriesId ?? null,
     recurring: e.recurring,
+    color: e.color ?? null,
   };
 }
 
@@ -91,6 +93,9 @@ function rowToEvent(r: EventRow): ScheduleEvent {
     source: r.source === 'ics' ? 'ics' : 'manual',
     seriesId: r.series_id ?? undefined,
     recurring: r.recurring,
+    // An unrecognised slot — a colour added by a newer build — falls back to
+    // the automatic colour rather than rendering as an unstyled block.
+    color: (r.color as ColorName | null) ?? undefined,
   };
 }
 

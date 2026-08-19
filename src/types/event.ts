@@ -48,6 +48,29 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
   tutoring: 'Tutoring',
 };
 
+/**
+ * Palette slots, defined once in styles.css and usable on any block.
+ *
+ * Lives here rather than in lib/colors so an event can name its own colour
+ * without the type module depending on the module that derives one.
+ */
+export type ColorName = 'blue' | 'orange' | 'violet' | 'green' | 'aqua' | 'yellow' | 'exam';
+
+export const COLOR_NAMES: ColorName[] = [
+  'blue', 'violet', 'aqua', 'green', 'yellow', 'orange', 'exam',
+];
+
+/** What each slot is called when a person has to choose one. */
+export const COLOR_LABEL: Record<ColorName, string> = {
+  blue: 'Blue',
+  violet: 'Indigo',
+  aqua: 'Teal',
+  green: 'Green',
+  yellow: 'Yellow',
+  orange: 'Purple',
+  exam: 'Red',
+};
+
 export interface ScheduleEvent {
   /** Unique per occurrence. Recurring events expand to many ids, one seriesId. */
   id: string;
@@ -66,6 +89,11 @@ export interface ScheduleEvent {
    * rather than being silently dropped on read.
    */
   source: 'ics' | 'manual';
+  /**
+   * A colour chosen by hand. Absent means the automatic one, derived from the
+   * course code so every meeting of a course matches without being told to.
+   */
+  color?: ColorName;
   /** Shared by every occurrence expanded from one recurring VEVENT. */
   seriesId?: string;
   /** True when this occurrence came from expanding an RRULE. */

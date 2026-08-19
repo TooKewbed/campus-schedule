@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    The tile version of the Skedge mark, matching icon-512-green.png.
+
+    A tile rather than the transparent mark: a browser tab paints the icon over
+    whatever chrome colour the user's theme happens to use, and a mark with no
+    ground disappears against one of them. The two-tone bars — a done segment
+    over a full-width track — survive down to 16px, which the finer artwork in
+    skedge-mark.svg does not; that one is here for use at display sizes.
+  -->
+  <rect width="512" height="512" rx="115" fill="#1E8A50"/>
+  <rect x="118" y="152" width="280" height="80" rx="40" fill="#66A882"/>
+  <rect x="118" y="152" width="100" height="80" rx="40" fill="#2FBF71"/>
+  <rect x="118" y="280" width="280" height="80" rx="40" fill="#66A882"/>
+  <rect x="118" y="280" width="176" height="80" rx="40" fill="#F5EAD8"/>
+</svg>

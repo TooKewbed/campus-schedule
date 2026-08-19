@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { CATEGORY_KIND, CATEGORY_LABEL, type EventCategory } from '../types/event';
+import {
+  CATEGORY_KIND,
+  CATEGORY_LABEL,
+  type ColorName,
+  type EventCategory,
+  type ScheduleEvent,
+} from '../types/event';
+import { automaticColorFor } from '../lib/colors';
+import { extractCourseCode } from '../lib/categorize';
 import {
   parseTimeInput,
   validateOnce,
@@ -8,6 +16,7 @@ import {
 } from '../lib/manualEvents';
 import { formatDuration, parseISODate, toISODate } from '../lib/time';
 import ChoiceOption from './ChoiceOption';
+import ColorPicker from './ColorPicker';
 import DatePicker from './DatePicker';
 import WeekdayPicker from './WeekdayPicker';
 
@@ -30,6 +39,7 @@ export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Pr
   const [start, setStart] = useState('09:00');
   const [end, setEnd] = useState('09:50');
   const [location, setLocation] = useState('');
+  const [color, setColor] = useState<ColorName | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   /**
@@ -48,6 +58,7 @@ export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Pr
       startMinutes: parseTimeInput(start),
       endMinutes: parseTimeInput(end),
       location,
+      color: color ?? undefined,
     };
 
     if (repeats) {
@@ -70,10 +81,18 @@ export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Pr
     setTitle('');
     setLocation('');
     setWeekdays([]);
+    setColor(null);
     setProblem(null);
   };
 
   const duration = parseTimeInput(end) - parseTimeInput(start);
+
+  // What the automatic slot would resolve to for what is being typed.
+  const autoColor = automaticColorFor({
+    title,
+    category,
+    courseCode: extractCourseCode(title),
+  } as ScheduleEvent);
 
   return (
     <section className="manual">
@@ -209,6 +228,11 @@ export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Pr
                 {duration > 0 ? formatDuration(duration) : 'Must be after the start'}
               </span>
             </label>
+
+            <div className="field field-wide">
+              <span className="field-label">Colour</span>
+              <ColorPicker value={color} onChange={setColor} automatic={autoColor} />
+            </div>
 
             <label className="field field-wide">
               <span className="field-label">Location</span>

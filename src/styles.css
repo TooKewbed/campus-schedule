@@ -2093,3 +2093,110 @@ dialog.confirm.sheet { max-width: 460px; }
   font-size: 12px;
   color: var(--label-tertiary);
 }
+
+/* ------------------------------------------------------------ week header -- */
+/* The month above the week strip, clickable to jump anywhere. The strip walks
+   a week at a time, which is fine for next Tuesday and useless for December. */
+
+.week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.week-range {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--label-tertiary);
+  white-space: nowrap;
+}
+
+/* The inline variant is a heading that happens to open a calendar, so it drops
+   the field's fill and sits at heading weight. */
+.datepicker-inline { display: inline-flex; }
+
+.datepicker-inline .datepicker-trigger {
+  width: auto;
+  gap: 4px;
+  padding: 2px 6px 2px 4px;
+  margin-left: -4px;
+  background: none;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.datepicker-inline .datepicker-trigger .chevron {
+  width: 15px;
+  height: 15px;
+  color: var(--label-tertiary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .datepicker-inline .datepicker-trigger:hover { background: var(--fill-tertiary); }
+}
+
+@media (max-width: 560px) {
+  .week-range { display: none; }
+}
+
+/* Every palette slot on both block types, so a hand-picked colour works
+   whatever the category. Previously each list held only the slots its own
+   automatic assignment could produce. */
+.ev.aqua   { --ev-color: var(--teal); }
+.ev.yellow { --ev-color: var(--yellow); }
+
+.ev-flex.blue   { --flex-color: var(--blue); }
+.ev-flex.orange { --flex-color: var(--purple); }
+.ev-flex.green  { --flex-color: var(--green); }
+.ev-flex.exam   { --flex-color: var(--red); }
+
+/* ---------------------------------------------------------------- swatches -- */
+
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  /* The ring sits outside the circle so selecting does not change its size. */
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow var(--dur-fast) var(--ease-out),
+              transform var(--dur-press) var(--ease-out);
+}
+
+.swatch:active { transform: scale(0.92); }
+
+.swatch.on {
+  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--swatch);
+}
+
+.swatch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--blue);
+}
+
+.swatch svg { width: 15px; height: 15px; }
+
+.swatch.blue   { --swatch: var(--blue); }
+.swatch.violet { --swatch: var(--indigo); }
+.swatch.aqua   { --swatch: var(--teal); }
+.swatch.green  { --swatch: var(--green); }
+.swatch.yellow { --swatch: var(--yellow); }
+.swatch.orange { --swatch: var(--purple); }
+.swatch.exam   { --swatch: var(--red); }
+
+/* The automatic slot wears the colour it would actually produce, with the "A"
+   marking it as derived rather than chosen. */
+.swatch-auto { position: relative; }

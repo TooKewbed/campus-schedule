@@ -1,4 +1,4 @@
-import { byStart, type EventCategory, type ScheduleEvent } from '../types/event';
+import { byStart, type ColorName, type EventCategory, type ScheduleEvent } from '../types/event';
 import { extractCourseCode } from './categorize';
 import { addDays, startOfDay } from './time';
 
@@ -18,6 +18,8 @@ export interface ManualSeriesInput {
   startMinutes: number;
   endMinutes: number;
   location?: string;
+  /** Hand-picked colour; absent means the automatic one. */
+  color?: ColorName;
   /** Last day the series runs. Omitted means "as far as the window allows". */
   until?: Date;
 }
@@ -62,6 +64,7 @@ export function expandManualSeries(
       category: input.category,
       location,
       courseCode,
+      color: input.color,
       source: 'manual',
       recurring: true,
     });
@@ -152,6 +155,7 @@ export function createSingleCommitment(
     category: input.category,
     location: input.location?.trim() || undefined,
     courseCode: extractCourseCode(title),
+    color: input.color,
     source: 'manual',
     recurring: false,
   };
@@ -164,6 +168,8 @@ export interface CommitmentValues {
   location: string;
   startMinutes: number;
   endMinutes: number;
+  /** null is an explicit choice of "automatic", distinct from not asked. */
+  color: ColorName | null;
 }
 
 /**
@@ -182,6 +188,7 @@ export function applyValues(event: ScheduleEvent, values: CommitmentValues): Sch
     category: values.category,
     location: values.location.trim() || undefined,
     courseCode: extractCourseCode(title),
+    color: values.color ?? undefined,
     start: atMinutes(day, values.startMinutes),
     end: atMinutes(day, values.endMinutes),
   };

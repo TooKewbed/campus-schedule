@@ -192,18 +192,21 @@ export default function App() {
     (values: CommitmentValues, repeats: boolean, weekdays: number[], until: Date | null) => {
       snapshotRef.current(`adding ${values.title.trim()}`);
 
+      // The form says null for "automatic"; an event says the field is absent.
+      const input = { ...values, color: values.color ?? undefined };
+
       if (repeats) {
         const anchor = startOfWeek(new Date());
         setEvents((prev) => [
           ...prev,
           ...expandManualSeries(
-            { ...values, weekdays, until: until ?? undefined },
+            { ...input, weekdays, until: until ?? undefined },
             addDays(anchor, -EXPAND_BACK_DAYS),
             addDays(anchor, EXPAND_FORWARD_DAYS),
           ),
         ]);
       } else {
-        setEvents((prev) => [...prev, createSingleCommitment(values, selected)]);
+        setEvents((prev) => [...prev, createSingleCommitment(input, selected)]);
       }
 
       setPendingCreate(null);
@@ -245,7 +248,13 @@ export default function App() {
           setEvents((prev) => [
             ...prev.filter((e) => e.seriesId !== seriesId),
             ...expandManualSeries(
-              { ...values, weekdays, until: until ?? undefined },
+              {
+                ...values,
+                // Same null-to-absent conversion as when creating.
+                color: values.color ?? undefined,
+                weekdays,
+                until: until ?? undefined,
+              },
               addDays(anchor, -EXPAND_BACK_DAYS),
               addDays(anchor, EXPAND_FORWARD_DAYS),
             ),

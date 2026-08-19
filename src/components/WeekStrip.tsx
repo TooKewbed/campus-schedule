@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { isFixed, type ScheduleEvent } from '../types/event';
 import { detectConflicts } from '../lib/conflicts';
-import { addDays, sameDay, startOfWeek } from '../lib/time';
+import { addDays, parseISODate, sameDay, startOfWeek, toISODate } from '../lib/time';
+import DatePicker from './DatePicker';
 import type { DayMarker } from '../types/dayMarker';
 import { dominantKind } from '../lib/dateKind';
 
@@ -38,12 +39,26 @@ export default function WeekStrip({
   }, [events, monday, markersOn]);
 
   return (
-    <div className="week-nav">
-      <button className="week-arrow" onClick={() => onShiftWeek(-1)} aria-label="Previous week">
-        ‹
-      </button>
+    <div className="week">
+      <div className="week-head">
+        {/* The same calendar the forms use, wearing a heading instead of a
+            field. Reusing it means the month grid, its keyboard handling and
+            its scroll-through-months behaviour exist once. */}
+        <DatePicker
+          variant="inline"
+          value={toISODate(selected)}
+          onChange={(iso) => onSelect(parseISODate(iso))}
+          label={monthLabel(selected)}
+        />
+        <span className="week-range">{weekRange(monday)}</span>
+      </div>
 
-      <div className="week-strip">
+      <div className="week-nav">
+        <button className="week-arrow" onClick={() => onShiftWeek(-1)} aria-label="Previous week">
+          ‹
+        </button>
+
+        <div className="week-strip">
         {days.map(({ date, fixedCount, conflictCount, markers }) => {
           const classes = ['day-chip'];
           if (sameDay(date, selected)) classes.push('selected');
@@ -71,11 +86,34 @@ export default function WeekStrip({
             </button>
           );
         })}
-      </div>
+        </div>
 
-      <button className="week-arrow" onClick={() => onShiftWeek(1)} aria-label="Next week">
-        ›
-      </button>
+        <button className="week-arrow" onClick={() => onShiftWeek(1)} aria-label="Next week">
+          ›
+        </button>
+      </div>
     </div>
   );
+}
+
+/**
+ * The month the shown week belongs to.
+ *
+ * A week straddling a month boundary is named for the selected day's month, not
+ * the Sunday's: the heading should agree with the day actually being looked at,
+ * which is what the schedule below it is showing.
+ */
+function monthLabel(selected: Date): string {
+  return selected.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+/** "Aug 16 – 22", or with both months named when the week crosses one. */
+function weekRange(monday: Date): string {
+  const end = addDays(monday, 6);
+  const start = monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const finish =
+    monday.getMonth() === end.getMonth()
+      ? String(end.getDate())
+      : end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${start} – ${finish}`;
 }

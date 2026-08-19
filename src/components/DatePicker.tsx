@@ -7,6 +7,13 @@ interface Props {
   /** YYYY-MM-DD, matching the native date input this replaces. */
   value: string;
   onChange: (value: string) => void;
+  /**
+   * 'field' reads as a form control, for sitting among inputs. 'inline' is a
+   * bare text button, for a heading that happens to be clickable.
+   */
+  variant?: 'field' | 'inline';
+  /** Trigger text. Defaults to the full date. */
+  label?: string;
 }
 
 const WEEKDAY_INITIALS = WEEKDAYS.map((d) => d.label);
@@ -21,7 +28,7 @@ const POPOVER_HEIGHT = 330;
  * positioning off the trigger's rect keeps it anchored without inheriting that
  * clipping.
  */
-export default function DatePicker({ value, onChange }: Props) {
+export default function DatePicker({ value, onChange, variant = 'field', label }: Props) {
   const selected = useMemo(() => parseISODate(value), [value]);
 
   const [open, setOpen] = useState(false);
@@ -178,7 +185,7 @@ export default function DatePicker({ value, onChange }: Props) {
   const today = startOfDay(new Date());
 
   return (
-    <div className="datepicker">
+    <div className={`datepicker datepicker-${variant}`}>
       <button
         ref={triggerRef}
         type="button"
@@ -186,9 +193,11 @@ export default function DatePicker({ value, onChange }: Props) {
         onClick={() => (open ? close() : openPicker())}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={label ? `${label} — jump to a date` : undefined}
       >
-        <CalendarGlyph />
-        <span>{longDate(selected)}</span>
+        {variant === 'field' && <CalendarGlyph />}
+        <span>{label ?? longDate(selected)}</span>
+        {variant === 'inline' && <Chevron open={open} />}
       </button>
 
       {open && rect && container &&
@@ -319,6 +328,26 @@ function CalendarGlyph() {
     <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <rect x="2.5" y="3.5" width="11" height="10" rx="2.5" stroke="currentColor" strokeWidth="1.4" />
       <path d="M2.5 6.5h11M5.5 2.5v2M10.5 2.5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Only the inline trigger shows one; the field variant has its calendar glyph. */
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`chevron${open ? ' open' : ''}`}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 6.5L8 9.5l3-3"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

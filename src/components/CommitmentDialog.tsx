@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { CATEGORY_KIND, CATEGORY_LABEL, type EventCategory, type ScheduleEvent } from '../types/event';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CATEGORY_KIND,
+  CATEGORY_LABEL,
+  type ColorName,
+  type EventCategory,
+  type ScheduleEvent,
+} from '../types/event';
+import { automaticColorFor } from '../lib/colors';
+import { extractCourseCode } from '../lib/categorize';
 import {
   countOccurrences,
   minutesOfDate,
@@ -10,6 +18,7 @@ import {
 import { addDays, formatDuration, parseISODate, startOfDay, toISODate } from '../lib/time';
 import { describeDays } from '../lib/weekdays';
 import WeekdayPicker from './WeekdayPicker';
+import ColorPicker from './ColorPicker';
 import ChoiceOption from './ChoiceOption';
 import SegmentedControl from './SegmentedControl';
 import type { DraftRange } from './DayGrid';
@@ -73,6 +82,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('class');
   const [location, setLocation] = useState('');
+  const [color, setColor] = useState<ColorName | null>(null);
   const [start, setStart] = useState('09:00');
   const [end, setEnd] = useState('10:00');
   const [repeats, setRepeats] = useState(true);
@@ -108,6 +118,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
       if (target.mode === 'create') {
         setTitle('');
         setLocation('');
+        setColor(null);
         setStart(toTimeInput(target.range.startMinutes));
         setEnd(toTimeInput(target.range.endMinutes));
         // The lane you drew in decides whether this blocks time.
@@ -121,6 +132,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
         const e = target.event;
         setTitle(e.title);
         setLocation(e.location ?? '');
+        setColor(e.color ?? null);
         setStart(toTimeInput(minutesOfDate(e.start)));
         setEnd(toTimeInput(minutesOfDate(e.end)));
         setCategory(e.category);
@@ -146,6 +158,25 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
 
   const editing = shown?.mode === 'edit';
+
+  /**
+   * What "Automatic" would resolve to right now, so that option can show its
+   * own result rather than an empty slot.
+   *
+   * Recomputed from the title being typed, not from the saved event: the
+   * automatic colour is keyed on the course code, so renaming "Lecture" to
+   * "CHEM 101 Lecture" changes it, and the swatch should keep up.
+   */
+  const autoColor = useMemo(() => {
+    const base = shown?.mode === 'edit' ? shown.event : null;
+    return automaticColorFor({
+      ...(base ?? ({} as ScheduleEvent)),
+      title,
+      category,
+      courseCode: extractCourseCode(title),
+      color: undefined,
+    });
+  }, [shown, title, category]);
   const recurring = shown?.mode === 'edit' && Boolean(shown.event.seriesId);
 
   const endsOnDate = endMode === 'date';
@@ -186,7 +217,8 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
 
     // null means "no end date" — the expansion then runs to the window's edge.
     const endsAt = endsOnDate ? untilDate : null;
-    const values: CommitmentValues = { title, category, location, startMinutes, endMinutes };
+
+    const values: CommitmentValues = { title, category, location, startMinutes, endMinutes, color };
     if (shown?.mode === 'edit') {
       onEdit(shown.event, values, recurring ? scope : 'one', weekdays, endsAt);
     } else {
@@ -247,6 +279,11 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
               placeholder="Optional"
             />
           </label>
+
+          <div className="field field-wide">
+            <span className="field-label">Colour</span>
+            <ColorPicker value={color} onChange={setColor} automatic={autoColor} />
+          </div>
 
           <label className="field">
             <span className="field-label">Starts</span>
