@@ -345,6 +345,14 @@ export default function App() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, notes } : t)));
   }, []);
 
+  // null clears it. The field is absent rather than null on the task itself,
+  // which is what both storage and the Supabase mapping already expect.
+  const setTaskDue = useCallback((id: string, due: Date | null) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, dueDate: due ?? undefined } : t)),
+    );
+  }, []);
+
   const deleteTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
@@ -545,9 +553,11 @@ export default function App() {
         <aside className="layout-side">
           <TaskList
             tasks={tasks}
+            now={now}
             onAdd={addTask}
             onToggle={toggleTask}
             onNotesChange={setTaskNotes}
+            onDueChange={setTaskDue}
             onDelete={deleteTask}
           />
         </aside>

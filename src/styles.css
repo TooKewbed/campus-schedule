@@ -2531,3 +2531,127 @@ dialog.confirm.share {
   margin-top: -4px;
 }
 .share-toggle .switch-row { padding: 0; font-size: 14px; }
+
+/* ======================================================= task deadlines == */
+
+/* Section headings inside the to-do card. Quiet by default — they are
+   signposts between groups, not titles competing with the card's own. */
+.task-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label-tertiary);
+  border-top: 1px solid var(--separator);
+}
+.task-list + .task-section { margin-top: 0; }
+.task-section span { font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+
+/* The one heading that is allowed to carry colour: it is the section the list
+   exists to draw attention to. */
+.task-section.urgent { color: var(--orange); }
+
+/* The first section sits directly under the add field, which already has its
+   own rule beneath it. */
+.task-add + .task-section { border-top: none; }
+
+.tasks-head .count.overdue { color: var(--red); font-weight: 550; }
+
+/* ---- the chip on a row ---- */
+
+/* The title's own column, so the chip sits under it instead of squeezing it. */
+.task-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.task-main .task-title { width: 100%; flex: none; }
+
+.due-chip {
+  flex: none;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  background: var(--fill-tertiary);
+  color: var(--label-secondary);
+}
+
+/* Four states, and only the first two raise their voice. A deadline next month
+   is information; one that has passed is a problem. */
+.due-chip.urgency-overdue {
+  background: color-mix(in srgb, var(--red) 16%, transparent);
+  color: var(--red);
+}
+.due-chip.urgency-today {
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
+  color: var(--orange);
+}
+.due-chip.urgency-soon { color: var(--label); }
+
+/* A finished task keeps its chip but stops shouting with it. */
+.task.done .due-chip {
+  background: var(--fill-tertiary);
+  color: var(--label-tertiary);
+}
+
+.icon-btn.due-overdue { color: var(--red); }
+.icon-btn.due-today   { color: var(--orange); }
+
+/* ---- the editor ---- */
+
+.due-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px 14px 48px;
+}
+
+.due-quick { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* One column, not two. This panel only ever opens inside the 300px sidebar,
+   where a split row leaves each field about a hundred pixels — enough to wrap
+   "August 16, 2026" onto two lines and to clip the AM/PM off the end of the
+   time input, which makes 11:59 read as the morning. */
+.due-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.due-fields input[type='time'] {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: -0.008em;
+  color: var(--label);
+  background: var(--fill-tertiary);
+  border: none;
+  border-radius: 10px;
+  padding: 9px 11px;
+  outline: none;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.due-fields input[type='time']:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent);
+}
+
+.due-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+.linkish.danger { color: var(--red); }
+
+@media (max-width: 900px) {
+  .due-editor { padding-left: 16px; }
+}

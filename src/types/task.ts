@@ -34,19 +34,12 @@ export function createTask(title: string): Task {
 }
 
 /**
- * Open tasks first in the order they were added, completed ones below with the
- * most recently finished on top. Stable ordering matters more than clever
- * ordering: a list that reshuffles as you check things off is hard to use.
+ * Ordering now lives in lib/deadlines as `groupTasks`, which splits the list
+ * into time-sensitive, anytime and done rather than returning one sequence.
+ * The single-sequence version was removed rather than left here, because a
+ * second ordering nothing calls is a description of behaviour the app no
+ * longer has.
  */
-export function sortTasks(tasks: Task[]): Task[] {
-  return [...tasks].sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1;
-    if (a.done && b.done) {
-      return (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0);
-    }
-    return a.createdAt.getTime() - b.createdAt.getTime();
-  });
-}
 
 export function openCount(tasks: Task[]): number {
   return tasks.reduce((n, t) => n + (t.done ? 0 : 1), 0);
