@@ -19,6 +19,7 @@ import ChoiceOption from './ChoiceOption';
 import ColorPicker from './ColorPicker';
 import DatePicker from './DatePicker';
 import WeekdayPicker from './WeekdayPicker';
+import Chevron from './Chevron';
 
 const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment'];
 const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring'];
@@ -256,24 +257,5 @@ export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Pr
         </div>
       </div>
     </section>
-  );
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className={`chevron${open ? ' open' : ''}`}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M5 6.5L8 9.5l3-3"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

@@ -3,6 +3,7 @@ import { CATEGORY_KIND, CATEGORY_LABEL, type ScheduleEvent } from '../types/even
 import { groupByWeekday, toTimeInput, type ManualSeries } from '../lib/manualEvents';
 import { formatDuration } from '../lib/time';
 import { WEEKDAYS } from '../lib/weekdays';
+import Chevron from './Chevron';
 
 interface Props {
   series: ManualSeries[];
@@ -33,8 +34,12 @@ export default function CommitmentList({ series, singles, onDelete, onDeleteSing
 
   if (total === 0) return null;
 
+  // Wears `manual` so it is the same card as the two panels below it — same
+  // fill, corner radius and rhythm. It used to be a bare transparent block
+  // whose day columns sat straight on the page, which read as a different kind
+  // of thing rather than as the first of three.
   return (
-    <section className="commitments">
+    <section className="manual commitments">
       <button
         className="manual-head"
         onClick={() => setOpen((o) => !o)}
@@ -126,25 +131,6 @@ export default function CommitmentList({ series, singles, onDelete, onDeleteSing
         </div>
       </div>
     </section>
-  );
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className={`chevron${open ? ' open' : ''}`}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M5 6.5L8 9.5l3-3"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

@@ -1994,6 +1994,8 @@ dialog.confirm.sheet { max-width: 460px; }
    Split out of the entry panel, which was being a form and a register at the
    same time and doing neither clearly. */
 
+/* Only a top margin of its own: the card itself, and the 20px below it, come
+   from `.manual`, which this now shares with the two panels underneath. */
 .commitments { margin-top: 20px; }
 
 .commitment-days {
@@ -2002,7 +2004,10 @@ dialog.confirm.sheet { max-width: 460px; }
      fit, so a laptop sees the week at once and a phone sees a single list. */
   grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
   gap: 14px;
-  padding-bottom: 4px;
+  /* The same inset and hairline `.manual-form` uses, so all three panels open
+     onto their contents identically instead of one running edge to edge. */
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--separator);
 }
 
 .commitment-day {
@@ -2089,7 +2094,9 @@ dialog.confirm.sheet { max-width: 460px; }
 /* Deleting a repeating commitment from one day removes it from all of them,
    which is worth saying once rather than discovering. */
 .commitment-note {
-  margin: 12px 0 0;
+  margin: 0;
+  /* Aligned with the day columns above it rather than with the card edge. */
+  padding: 0 18px 16px;
   font-size: 12px;
   color: var(--label-tertiary);
 }

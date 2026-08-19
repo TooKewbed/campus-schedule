@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { describeMarkerDate, sortMarkers, type DayMarker } from '../types/dayMarker';
+import Chevron from './Chevron';
 import DatePicker from './DatePicker';
 
 interface Props {
@@ -162,25 +163,6 @@ function summarize(personal: number, holidays: number): string {
   if (personal > 0) parts.push(`${personal} of your own`);
   if (holidays > 0) parts.push(`${holidays} holidays`);
   return parts.join(' · ');
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className={`chevron${open ? ' open' : ''}`}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M5 6.5L8 9.5l3-3"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function TrashGlyph() {
