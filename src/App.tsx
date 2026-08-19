@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScheduleEvent } from './types/event';
-import { createTask, type Task } from './types/task';
+import { createTask, openCount, type Task } from './types/task';
 import { createMarker, markersOn, type DayMarker } from './types/dayMarker';
 import { detectConflicts } from './lib/conflicts';
 import { usFederalHolidays } from './lib/holidays';
@@ -31,6 +31,7 @@ import {
 import ConfirmDeleteDialog from './components/ConfirmDeleteDialog';
 import DayGrid, { type DraftRange } from './components/DayGrid';
 import CommitmentList from './components/CommitmentList';
+import DayBrief from './components/DayBrief';
 import DayNotes from './components/DayNotes';
 import CommitmentDialog, {
   type CommitmentTarget,
@@ -148,19 +149,10 @@ export default function App() {
   const addSingle = useCallback(
     (input: Omit<ManualSeriesInput, 'weekdays'>, date: Date) => {
       snapshotRef.current(`adding ${input.title.trim()}`);
-      setEvents((prev) => [
-        ...prev,
-        createSingleCommitment(
-          {
-            title: input.title,
-            category: input.category,
-            location: input.location,
-            startMinutes: input.startMinutes,
-            endMinutes: input.endMinutes,
-          },
-          date,
-        ),
-      ]);
+      // Passed whole rather than field by field: listing the fields here means
+      // every new one has to be remembered in a second place, and the colour
+      // was already being dropped that way.
+      setEvents((prev) => [...prev, createSingleCommitment(input, date)]);
     },
     [],
   );
@@ -467,22 +459,18 @@ export default function App() {
 
       <div className="layout">
         <main className="layout-main">
-          <ManualEntry
-            count={manualSeries.length + manualSingles.length}
-            defaultOpen={events.length === 0}
-            onAdd={addSeries}
-            onAddOnce={addSingle}
+          {/* Leads the column: the day gets summarised before it is laid out
+              hour by hour. */}
+          <DayBrief
+            events={dayEvents}
+            conflicts={conflicts}
+            freeWindows={freeWindows}
+            markerCount={dayMarkers.length}
+            openTasks={openCount(tasks)}
+            now={now}
+            selected={selected}
+            isToday={isToday}
           />
-
-          <ImportantDates
-            markers={markers}
-            holidayCount={usFederalHolidays(selected.getFullYear()).length}
-            showHolidays={showHolidays}
-            onToggleHolidays={setShowHolidays}
-            onAdd={addMarker}
-            onDelete={deleteMarker}
-          />
-
 
           <DayNotes markers={dayMarkers} isToday={isToday} />
 
@@ -523,6 +511,25 @@ export default function App() {
             singles={manualSingles}
             onDelete={deleteSeries}
             onDeleteSingle={deleteEvent}
+          />
+
+          {/* Setup lives below the day it configures. These are opened when a
+              term starts and rarely after; the schedule is what the app is
+              opened for, so it should not sit behind two forms. */}
+          <ManualEntry
+            count={manualSeries.length + manualSingles.length}
+            defaultOpen={events.length === 0}
+            onAdd={addSeries}
+            onAddOnce={addSingle}
+          />
+
+          <ImportantDates
+            markers={markers}
+            holidayCount={usFederalHolidays(selected.getFullYear()).length}
+            showHolidays={showHolidays}
+            onToggleHolidays={setShowHolidays}
+            onAdd={addMarker}
+            onDelete={deleteMarker}
           />
         </main>
 

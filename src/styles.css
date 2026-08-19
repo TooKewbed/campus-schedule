@@ -2200,3 +2200,78 @@ dialog.confirm.sheet { max-width: 460px; }
 /* The automatic slot wears the colour it would actually produce, with the "A"
    marking it as derived rather than chosen. */
 .swatch-auto { position: relative; }
+
+/* -------------------------------------------------------------- day brief -- */
+/* The day in one line, above the grid. The schedule answers "what is at two
+   o'clock"; this answers "what am I walking into", which is the question the
+   app is actually opened with. */
+
+.brief {
+  margin-bottom: 20px;
+  padding: 18px 20px 16px;
+  background: var(--bg-card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  /* A left rail rather than a tinted card: the brief sits above everything and
+     a full wash at this size would shout over the schedule it introduces. */
+  border-left: 4px solid var(--brief-accent);
+}
+
+.brief-eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--brief-accent);
+}
+
+.brief-headline {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  /* Larger type, tighter tracking — same optical rhythm as the body. */
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  color: var(--label);
+  overflow-wrap: anywhere;
+}
+
+.brief-detail {
+  margin: 5px 0 0;
+  font-size: 14px;
+  letter-spacing: -0.006em;
+  color: var(--label-secondary);
+}
+
+.brief-facts {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.brief-facts li {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--fill-tertiary);
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+
+/* Three states, and only one of them raises its voice. A double-booking is the
+   single thing here that needs acting on rather than merely knowing. */
+.brief.tone-calm { --brief-accent: var(--blue); }
+.brief.tone-busy { --brief-accent: var(--orange); }
+.brief.tone-warn { --brief-accent: var(--red); }
+
+.brief.tone-warn {
+  background: color-mix(in srgb, var(--red) 7%, var(--bg-card));
+}
+
+@media (max-width: 560px) {
+  .brief-headline { font-size: 19px; }
+}
