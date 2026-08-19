@@ -40,6 +40,7 @@ import CommitmentDialog, {
 import ImportantDates from './components/ImportantDates';
 import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
+import ShareDialog from './components/ShareDialog';
 import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
 import SyncStatus from './components/SyncStatus';
@@ -89,6 +90,7 @@ export default function App() {
   const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   const [pendingCreate, setPendingCreate] = useState<DraftRange | null>(null);
   const [pendingEdit, setPendingEdit] = useState<ScheduleEvent | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   // Mirrors the four persisted collections to the account when signed in, and
   // pulls them back down on a new device. Local state stays authoritative for
@@ -448,6 +450,9 @@ export default function App() {
               Today
             </button>
           )}
+          <button className="btn" onClick={() => setSharing(true)}>
+            Share
+          </button>
           <SegmentedControl
             label="Appearance"
             options={APPEARANCE_OPTIONS}
@@ -557,6 +562,16 @@ export default function App() {
         }}
         onCreate={createFromDraft}
         onEdit={editEvent}
+      />
+
+      {/* Given the same markers the day view shows, holidays included or not,
+          so a shared week matches the week it was shared from. */}
+      <ShareDialog
+        open={sharing}
+        onDismiss={() => setSharing(false)}
+        events={events}
+        markers={allMarkers}
+        anchor={selected}
       />
 
       <ConfirmDeleteDialog
