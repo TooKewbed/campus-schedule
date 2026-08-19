@@ -33,6 +33,7 @@ import DayGrid, { type DraftRange } from './components/DayGrid';
 import CommitmentList from './components/CommitmentList';
 import DayBrief from './components/DayBrief';
 import DayNotes from './components/DayNotes';
+import DueToday from './components/DueToday';
 import CommitmentDialog, {
   type CommitmentTarget,
   type EditScope,
@@ -47,6 +48,8 @@ import SyncStatus from './components/SyncStatus';
 import TaskList from './components/TaskList';
 import WeekStrip from './components/WeekStrip';
 import { useSync } from './hooks/useSync';
+import { useReminders } from './hooks/useReminders';
+import { coursesFrom, dueOn } from './lib/courses';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 
 /** How far around today recurring events get expanded on import. */
@@ -329,8 +332,16 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, undoStack.length]);
 
-  const addTask = useCallback((title: string) => {
-    setTasks((prev) => [...prev, createTask(title)]);
+  const addTask = useCallback((title: string, courseCode?: string) => {
+    setTasks((prev) => [...prev, createTask(title, courseCode)]);
+  }, []);
+
+  // null clears the tag; the field is absent rather than null on the task, which
+  // is what storage and the Supabase mapping both expect.
+  const setTaskCourse = useCallback((id: string, code: string | null) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, courseCode: code ?? undefined } : t)),
+    );
   }, []);
 
   const toggleTask = useCallback((id: string) => {
@@ -418,6 +429,16 @@ export default function App() {
     [allMarkers],
   );
 
+  // Courses are read off the schedule rather than kept as their own records, so
+  // the list is right the moment a class is added and nobody has to set courses
+  // up before the app is useful.
+  const courses = useMemo(() => coursesFrom(events, tasks), [events, tasks]);
+
+  const dueSelected = useMemo(() => dueOn(tasks, selected), [tasks, selected]);
+
+  // Only fires while the app is open; the toggle in the to-do header says so.
+  const reminders = useReminders(tasks, now);
+
   const freeWindows = useMemo(() => {
     const dayStart = new Date(selected);
     dayStart.setHours(GRID.startHour, 0, 0, 0);
@@ -487,6 +508,11 @@ export default function App() {
 
           <DayNotes markers={dayMarkers} isToday={isToday} />
 
+          {/* What is owed on this day, beside what happens on it. The to-do
+              list in the margin is sorted by deadline, so a day's own work was
+              otherwise only findable by reading dates. */}
+          <DueToday tasks={dueSelected} now={now} isToday={isToday} />
+
           {/* The grid always renders. An empty schedule is a real, usable state —
               it is the surface you drag on to build one, not an error to explain. */}
           <StatTiles
@@ -554,10 +580,13 @@ export default function App() {
           <TaskList
             tasks={tasks}
             now={now}
+            courses={courses}
+            reminders={reminders}
             onAdd={addTask}
             onToggle={toggleTask}
             onNotesChange={setTaskNotes}
             onDueChange={setTaskDue}
+            onCourseChange={setTaskCourse}
             onDelete={deleteTask}
           />
         </aside>

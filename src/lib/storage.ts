@@ -125,3 +125,44 @@ export function loadShowHolidays(): boolean {
     return true;
   }
 }
+
+/* -------------------------------------------------------------- reminders -- */
+
+const REMINDERS_KEY = 'campus-schedule:reminders:v1';
+
+export interface StoredReminders {
+  enabled: boolean;
+  /** Keys already delivered, so a refresh does not replay them. */
+  sent: string[];
+}
+
+export function saveReminders(value: StoredReminders): void {
+  try {
+    localStorage.setItem(REMINDERS_KEY, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Off unless switched on. This one is deliberately opt-in — a browser
+ * notification is an interruption, and the app has no business asking for
+ * permission to interrupt before anyone has asked it to.
+ *
+ * Deliberately not synced to the account either: whether this device may show
+ * notifications is a fact about the device, not about the person.
+ */
+export function loadReminders(): StoredReminders {
+  try {
+    const raw = localStorage.getItem(REMINDERS_KEY);
+    if (!raw) return { enabled: false, sent: [] };
+
+    const parsed = JSON.parse(raw);
+    return {
+      enabled: parsed?.enabled === true,
+      sent: Array.isArray(parsed?.sent) ? parsed.sent.filter((k: unknown) => typeof k === 'string') : [],
+    };
+  } catch {
+    return { enabled: false, sent: [] };
+  }
+}

@@ -9,40 +9,67 @@ import {
   overdueCount,
   toDueParts,
 } from '../lib/deadlines';
+import { coursesWithTasks, tasksForCourse, splitCourseFromTitle, type Course } from '../lib/courses';
+import type { RemindersApi } from '../hooks/useReminders';
 import DatePicker from './DatePicker';
 
 interface Props {
   tasks: Task[];
   now: Date;
-  onAdd: (title: string) => void;
+  /** Every course the app knows about, for tagging and filtering. */
+  courses: Course[];
+  reminders: RemindersApi;
+  onAdd: (title: string, courseCode?: string) => void;
   onToggle: (id: string) => void;
   onNotesChange: (id: string, notes: string) => void;
   onDueChange: (id: string, due: Date | null) => void;
+  onCourseChange: (id: string, code: string | null) => void;
   onDelete: (id: string) => void;
 }
 
 /** Which disclosure a row has open. Only ever one, so the row stays legible. */
-type Panel = 'notes' | 'due';
+type Panel = 'details' | 'due';
 
 export default function TaskList({
   tasks,
   now,
+  courses,
+  reminders,
   onAdd,
   onToggle,
   onNotesChange,
   onDueChange,
+  onCourseChange,
   onDelete,
 }: Props) {
   const [draft, setDraft] = useState('');
   const [panels, setPanels] = useState<Record<string, Panel | undefined>>({});
+  const [filter, setFilter] = useState<string | null>(null);
 
-  const groups = useMemo(() => groupTasks(tasks), [tasks]);
+  const colorOf = useMemo(() => {
+    const map = new Map(courses.map((c) => [c.code, c.color]));
+    return (code: string) => map.get(code) ?? 'blue';
+  }, [courses]);
+
+  // Only courses that actually have tasks: a filter listing classes with
+  // nothing against them is a menu of dead ends.
+  const filterable = useMemo(() => coursesWithTasks(courses, tasks), [courses, tasks]);
+  const visible = useMemo(() => tasksForCourse(tasks, filter), [tasks, filter]);
+  const groups = useMemo(() => groupTasks(visible), [visible]);
+
   const remaining = openCount(tasks);
   const late = overdueCount(tasks, now);
 
   const submit = () => {
     if (!draft.trim()) return;
-    onAdd(draft);
+    // "CHEM 101 lab report" files itself under the course and keeps "lab
+    // report" as the title. Typing is faster than reaching for a menu, and the
+    // menu is still there for anything it misses.
+    const { courseCode, title } = splitCourseFromTitle(
+      draft,
+      courses.map((c) => c.code),
+    );
+    onAdd(title, courseCode);
     setDraft('');
   };
 
@@ -91,27 +118,36 @@ export default function TaskList({
             <CheckGlyph />
           </button>
 
-          {/* Title and chip stack rather than sit side by side. The row lives
-              in a 300px column and already carries three buttons; a chip
+          {/* Title and chips stack rather than sit side by side. The row lives
+              in a 300px column and already carries three buttons; chips
               competing for the same line left the title about sixty pixels,
               which `overflow-wrap: anywhere` then broke mid-word. */}
           <div className="task-main">
             <button
               className="task-title"
-              onClick={() => togglePanel(task.id, 'notes')}
-              aria-expanded={panel === 'notes'}
+              onClick={() => togglePanel(task.id, 'details')}
+              aria-expanded={panel === 'details'}
             >
               <span className="task-text">{task.title}</span>
               {/* Collapsed rows still surface that a note exists, and what it
                   says — a hidden note is a forgotten note. */}
-              {task.notes.trim() && panel !== 'notes' && (
+              {task.notes.trim() && panel !== 'details' && (
                 <span className="task-note-preview">{task.notes.trim()}</span>
               )}
             </button>
 
-            {deadline && (
-              <span className={`due-chip urgency-${deadline.urgency}`} title={deadline.full}>
-                {deadline.label}
+            {(task.courseCode || deadline) && (
+              <span className="task-flags">
+                {task.courseCode && (
+                  <span className={`course-chip color-${colorOf(task.courseCode)}`}>
+                    {task.courseCode}
+                  </span>
+                )}
+                {deadline && (
+                  <span className={`due-chip urgency-${deadline.urgency}`} title={deadline.full}>
+                    {deadline.label}
+                  </span>
+                )}
               </span>
             )}
           </div>
@@ -133,12 +169,12 @@ export default function TaskList({
           </button>
 
           <button
-            className={`icon-btn${panel === 'notes' ? ' active' : ''}`}
-            onClick={() => togglePanel(task.id, 'notes')}
-            aria-label={panel === 'notes' ? 'Hide note' : 'Add a note'}
-            title={panel === 'notes' ? 'Hide note' : 'Add a note'}
+            className={`icon-btn${panel === 'details' ? ' active' : ''}`}
+            onClick={() => togglePanel(task.id, 'details')}
+            aria-label={`Course and notes for "${task.title}"`}
+            title="Details"
           >
-            <NoteGlyph filled={Boolean(task.notes.trim())} />
+            <NoteGlyph filled={Boolean(task.notes.trim() || task.courseCode)} />
           </button>
 
           <button
@@ -151,9 +187,29 @@ export default function TaskList({
           </button>
         </div>
 
-        <div className="task-notes" data-open={panel === 'notes'}>
+        {/* inert while closed: the panel is only visually collapsed, so its
+            select and textarea would otherwise still be reachable by Tab —
+            a keyboard user landing in fields they cannot see. */}
+        <div className="task-notes" data-open={panel === 'details'} inert={panel !== 'details'}>
           <div className="task-notes-inner">
             <div className="task-notes-pad">
+              {courses.length > 0 && (
+                <label className="field task-course">
+                  <span className="field-label">Course</span>
+                  <select
+                    value={task.courseCode ?? ''}
+                    onChange={(e) => onCourseChange(task.id, e.target.value || null)}
+                  >
+                    <option value="">No course</option>
+                    {courses.map((course) => (
+                      <option key={course.code} value={course.code}>
+                        {course.code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <textarea
                 value={task.notes}
                 onChange={(e) => onNotesChange(task.id, e.target.value)}
@@ -164,7 +220,7 @@ export default function TaskList({
           </div>
         </div>
 
-        <div className="task-notes" data-open={panel === 'due'}>
+        <div className="task-notes" data-open={panel === 'due'} inert={panel !== 'due'}>
           <div className="task-notes-inner">
             <DeadlineEditor
               task={task}
@@ -182,7 +238,10 @@ export default function TaskList({
     <section className="tasks">
       <div className="tasks-head">
         <h2>To-do</h2>
-        <span className={`count${late > 0 ? ' overdue' : ''}`}>{countLabel}</span>
+        <div className="tasks-head-right">
+          <span className={`count${late > 0 ? ' overdue' : ''}`}>{countLabel}</span>
+          <ReminderToggle reminders={reminders} />
+        </div>
       </div>
 
       <div className="task-card">
@@ -205,10 +264,37 @@ export default function TaskList({
           )}
         </div>
 
+        {/* Worth showing only once there is more than one thing to choose
+            between; with a single course it filters nothing. */}
+        {filterable.length > 1 && (
+          <div className="task-filter">
+            <select
+              value={filter ?? ''}
+              aria-label="Filter by course"
+              onChange={(e) => setFilter(e.target.value || null)}
+            >
+              <option value="">All courses</option>
+              {filterable.map((course) => (
+                <option key={course.code} value={course.code}>
+                  {course.code}
+                </option>
+              ))}
+            </select>
+            {filter && (
+              <button className="linkish" onClick={() => setFilter(null)}>
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {tasks.length === 0 ? (
           <p className="task-empty">
             Anything that isn&rsquo;t tied to a time slot — errands, emails, readings.
+            Start one with a course code and it files itself.
           </p>
+        ) : visible.length === 0 ? (
+          <p className="task-empty">Nothing for {filter} yet.</p>
         ) : (
           <>
             {/* Headings appear only over a section that has something in it.
@@ -252,6 +338,32 @@ export default function TaskList({
   );
 }
 
+/* ------------------------------------------------------------ reminders -- */
+
+function ReminderToggle({ reminders }: { reminders: RemindersApi }) {
+  if (reminders.permission === 'unsupported') return null;
+
+  const blocked = reminders.permission === 'denied';
+  const label = blocked
+    ? 'Notifications are blocked for this site in your browser settings'
+    : reminders.enabled
+      ? 'Deadline reminders are on. They arrive while Skedge is open in a tab.'
+      : 'Remind me about deadlines while Skedge is open';
+
+  return (
+    <button
+      className={`icon-btn${reminders.enabled ? ' active' : ''}`}
+      title={label}
+      aria-label={label}
+      aria-pressed={reminders.enabled}
+      disabled={blocked}
+      onClick={() => (reminders.enabled ? reminders.disable() : void reminders.enable())}
+    >
+      <BellGlyph on={reminders.enabled} muted={blocked} />
+    </button>
+  );
+}
+
 /* --------------------------------------------------------------- editor -- */
 
 interface EditorProps {
@@ -272,9 +384,6 @@ function DeadlineEditor({ task, now, onChange, onClose }: EditorProps) {
     target.setHours(due.getHours(), due.getMinutes(), 0, 0);
     onChange(target);
   };
-
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
 
   return (
     <div className="due-editor">
@@ -321,12 +430,7 @@ function DeadlineEditor({ task, now, onChange, onClose }: EditorProps) {
       </div>
 
       <div className="due-actions">
-        <button
-          className="linkish"
-          onClick={() => {
-            onChange(endOfDay(due));
-          }}
-        >
+        <button className="linkish" onClick={() => onChange(endOfDay(due))}>
           Clear the time
         </button>
         <button
@@ -371,6 +475,22 @@ function ClockGlyph({ set }: { set: boolean }) {
         strokeLinejoin="round"
         opacity={set ? 1 : 0.55}
       />
+    </svg>
+  );
+}
+
+function BellGlyph({ on, muted }: { on: boolean; muted: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4 11V7.2a4 4 0 1 1 8 0V11l1 1.4H3L4 11Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        opacity={on ? 1 : 0.75}
+      />
+      <path d="M6.6 13.4a1.6 1.6 0 0 0 2.8 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {muted && <path d="M2.6 2.6l10.8 10.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />}
     </svg>
   );
 }

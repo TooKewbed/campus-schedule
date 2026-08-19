@@ -22,7 +22,7 @@ export interface Task {
   dueDate?: Date;
 }
 
-export function createTask(title: string): Task {
+export function createTask(title: string, courseCode?: string): Task {
   return {
     id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: title.trim(),
@@ -30,6 +30,9 @@ export function createTask(title: string): Task {
     notes: '',
     createdAt: new Date(),
     completedAt: null,
+    // Absent rather than empty, matching how storage and the Supabase mapping
+    // both treat "no course".
+    ...(courseCode ? { courseCode } : {}),
   };
 }
 
