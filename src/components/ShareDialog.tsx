@@ -6,6 +6,7 @@ import {
   buildSnapshot,
   describeRange,
   encodeSnapshot,
+  flexibleCountIn,
   LINK_WARN_LENGTH,
   rangeFor,
   shareUrl,
@@ -59,6 +60,7 @@ export default function ShareDialog({ open, onDismiss, events, markers, anchor }
   const ref = useRef<HTMLDialogElement>(null);
   const [kind, setKind] = useState<RangeKind>('week');
   const [title, setTitle] = useState('');
+  const [includeFlexible, setIncludeFlexible] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,8 +74,15 @@ export default function ShareDialog({ open, onDismiss, events, markers, anchor }
   }, [open]);
 
   const snapshot = useMemo(
-    () => buildSnapshot({ kind, anchor, events, markers, title }),
-    [kind, anchor, events, markers, title],
+    () => buildSnapshot({ kind, anchor, events, markers, title, includeFlexible }),
+    [kind, anchor, events, markers, title, includeFlexible],
+  );
+
+  // Offered only when the range actually holds some, so the switch never sits
+  // there doing visibly nothing.
+  const flexibleCount = useMemo(
+    () => flexibleCountIn(kind, anchor, events),
+    [kind, anchor, events],
   );
 
   const scene = useMemo(() => buildPoster(snapshot), [snapshot]);
@@ -208,6 +217,24 @@ export default function ShareDialog({ open, onDismiss, events, markers, anchor }
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
+
+        {flexibleCount > 0 && (
+          <div className="share-toggle">
+            <label className="switch-row">
+              <input
+                type="checkbox"
+                checked={includeFlexible}
+                onChange={(e) => setIncludeFlexible(e.target.checked)}
+              />
+              <span>Include optional commitments</span>
+            </label>
+            <span className="field-hint">
+              {includeFlexible
+                ? `${flexibleCount} in this ${kind} — office hours, study, tutoring`
+                : `${flexibleCount} left out`}
+            </span>
+          </div>
+        )}
 
         <div className="share-preview">
           <PosterView

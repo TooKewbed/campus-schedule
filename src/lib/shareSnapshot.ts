@@ -164,13 +164,31 @@ export interface SnapshotInput {
    */
   markers: DayMarker[];
   title?: string;
+  /**
+   * Whether optional commitments — office hours, study, tutoring — travel with
+   * the snapshot. Defaults to true, matching what the sharer is looking at.
+   *
+   * Filtered out here rather than hidden while drawing, so turning it off
+   * genuinely removes them: they are not in the link, not in the image, and not
+   * recoverable by anyone who takes the link apart. A switch labelled "don't
+   * show" that still shipped the data would be the wrong kind of surprise.
+   */
+  includeFlexible?: boolean;
 }
 
-export function buildSnapshot({ kind, anchor, events, markers, title }: SnapshotInput): Snapshot {
+export function buildSnapshot({
+  kind,
+  anchor,
+  events,
+  markers,
+  title,
+  includeFlexible = true,
+}: SnapshotInput): Snapshot {
   const range = rangeFor(kind, anchor);
 
   const inRange = events
     .filter((e) => e.start < e.end && dayIndex(range, e.start) !== -1)
+    .filter((e) => includeFlexible || isFixedCategory(e.category))
     .sort((a, b) => +a.start - +b.start);
 
   const mk: SharedMarker[] = [];
@@ -258,6 +276,27 @@ export function snapshotStart(snapshot: Snapshot): Date {
 /** Only fixed commitments block time; flexible ones are drawn as available. */
 export function isFixedCategory(category: EventCategory): boolean {
   return CATEGORY_KIND[category] === 'fixed';
+}
+
+/**
+ * How many optional commitments a range holds.
+ *
+ * Lets the dialog offer the switch only when there is something for it to do —
+ * a control that visibly changes nothing reads as broken, and on a week with no
+ * office hours in it that is exactly how it would read.
+ */
+export function flexibleCountIn(
+  kind: RangeKind,
+  anchor: Date,
+  events: ScheduleEvent[],
+): number {
+  const range = rangeFor(kind, anchor);
+  return events.filter(
+    (e) =>
+      e.start < e.end &&
+      dayIndex(range, e.start) !== -1 &&
+      !isFixedCategory(e.category),
+  ).length;
 }
 
 /* -------------------------------------------------------------- encoding -- */
