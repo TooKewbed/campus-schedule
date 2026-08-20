@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ColorName, EventCategory, ScheduleEvent } from '../types/event';
 import type { DayMarker } from '../types/dayMarker';
 import type { Task } from '../types/task';
+import type { ShoppingItem } from '../types/shopping';
 import { isRepeat } from './repeat';
 
 /**
@@ -49,6 +50,16 @@ interface TaskRow {
   course_code: string | null;
   due_date: string | null;
   repeat: string | null;
+}
+
+interface ShoppingRow {
+  user_id: string;
+  id: string;
+  title: string;
+  done: boolean;
+  notes: string;
+  created_at: string;
+  completed_at: string | null;
 }
 
 interface MarkerRow {
@@ -132,6 +143,29 @@ function rowToTask(r: TaskRow): Task {
   };
 }
 
+function shoppingToRow(userId: string, item: ShoppingItem): ShoppingRow {
+  return {
+    user_id: userId,
+    id: item.id,
+    title: item.title,
+    done: item.done,
+    notes: item.notes,
+    created_at: item.createdAt.toISOString(),
+    completed_at: item.completedAt ? item.completedAt.toISOString() : null,
+  };
+}
+
+function rowToShopping(r: ShoppingRow): ShoppingItem {
+  return {
+    id: r.id,
+    title: r.title,
+    done: r.done,
+    notes: r.notes ?? '',
+    createdAt: new Date(r.created_at),
+    completedAt: r.completed_at ? new Date(r.completed_at) : null,
+  };
+}
+
 function markerToRow(userId: string, m: DayMarker): MarkerRow {
   return {
     user_id: userId,
@@ -197,6 +231,7 @@ function diffRows<T extends { id: string }, Row>(
 export interface RemoteSnapshot {
   events: ScheduleEvent[];
   tasks: Task[];
+  shopping: ShoppingItem[];
   markers: DayMarker[];
   showHolidays: boolean;
 }
@@ -208,10 +243,23 @@ export interface RemoteSnapshot {
  * restricts each table to the signed-in user, and adding a redundant filter in
  * the client would imply the security lives here rather than in the database.
  */
+/**
+ * Is this the error a table that does not exist produces?
+ *
+ * Postgres says 42P01. PostgREST usually answers from its own schema cache
+ * first and says PGRST205 instead, so both count; the message is checked only
+ * as a last resort, for versions that report neither.
+ */
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  if (error.code === '42P01' || error.code === 'PGRST205') return true;
+  return /could not find the table/i.test(error.message ?? '');
+}
+
 export async function fetchAll(supabase: SupabaseClient): Promise<RemoteSnapshot> {
-  const [events, tasks, markers, prefs] = await Promise.all([
+  const [events, tasks, shopping, markers, prefs] = await Promise.all([
     supabase.from('events').select('*'),
     supabase.from('tasks').select('*'),
+    supabase.from('shopping_items').select('*'),
     supabase.from('day_markers').select('*'),
     supabase.from('preferences').select('show_holidays').maybeSingle(),
   ]);
@@ -219,9 +267,20 @@ export async function fetchAll(supabase: SupabaseClient): Promise<RemoteSnapshot
   const failure = events.error ?? tasks.error ?? markers.error ?? prefs.error;
   if (failure) throw new Error(failure.message);
 
+  // The shopping table is newer than the rest of the schema, so it can be
+  // genuinely absent on an account whose migrations have not been run yet.
+  // That must not take down the schedule with it: a missing table means an
+  // empty list, and everything else still syncs. Any other error still counts,
+  // because "the query failed" is not the same as "the feature is not
+  // installed" — and a failed write will still say so out loud.
+  if (shopping.error && !isMissingTable(shopping.error)) {
+    throw new Error(shopping.error.message);
+  }
+
   return {
     events: (events.data as EventRow[]).map(rowToEvent),
     tasks: (tasks.data as TaskRow[]).map(rowToTask),
+    shopping: ((shopping.data ?? []) as ShoppingRow[]).map(rowToShopping),
     markers: (markers.data as MarkerRow[]).map(rowToMarker),
     // No preferences row yet means a first sign-in, and holidays default on.
     showHolidays: prefs.data?.show_holidays ?? true,
@@ -277,6 +336,15 @@ export function pushTasks(
   return push(supabase, 'tasks', prev, next, (t) => taskToRow(userId, t));
 }
 
+export function pushShopping(
+  supabase: SupabaseClient,
+  userId: string,
+  prev: ShoppingItem[],
+  next: ShoppingItem[],
+): Promise<void> {
+  return push(supabase, 'shopping_items', prev, next, (item) => shoppingToRow(userId, item));
+}
+
 /**
  * Only hand this the user's own markers. Federal holidays are computed per
  * displayed year and must never be written — storing them would freeze a
@@ -321,8 +389,14 @@ export async function pushPreferences(
  */
 export function shouldSeedFromLocal(remote: RemoteSnapshot, local: RemoteSnapshot): boolean {
   const remoteEmpty =
-    remote.events.length === 0 && remote.tasks.length === 0 && remote.markers.length === 0;
+    remote.events.length === 0 &&
+    remote.tasks.length === 0 &&
+    remote.shopping.length === 0 &&
+    remote.markers.length === 0;
   const localHasData =
-    local.events.length > 0 || local.tasks.length > 0 || local.markers.length > 0;
+    local.events.length > 0 ||
+    local.tasks.length > 0 ||
+    local.shopping.length > 0 ||
+    local.markers.length > 0;
   return remoteEmpty && localHasData;
 }

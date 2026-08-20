@@ -13,6 +13,7 @@ import {
 import { coursesWithTasks, tasksForCourse, splitCourseFromTitle, type Course } from '../lib/courses';
 import type { RemindersApi } from '../hooks/useReminders';
 import { isRepeat, REPEAT_LABEL, REPEAT_OPTIONS, describeRepeat } from '../lib/repeat';
+import { CheckGlyph, NoteGlyph, TrashGlyph } from './Glyphs';
 import DatePicker from './DatePicker';
 
 interface Props {
@@ -484,20 +485,6 @@ function DeadlineEditor({ task, now, onChange, onRepeatChange, onClose }: Editor
 
 /* --------------------------------------------------------------- glyphs -- */
 
-function CheckGlyph() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3.5 8.5l3 3 6-7"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function ClockGlyph({ set }: { set: boolean }) {
   return (
     <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -530,21 +517,6 @@ function BellGlyph({ on, muted }: { on: boolean; muted: boolean }) {
   );
 }
 
-function NoteGlyph({ filled }: { filled: boolean }) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="2.5" y="2.5" width="11" height="11" rx="3" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M5.5 6.5h5M5.5 9.5h3"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        opacity={filled ? 1 : 0.55}
-      />
-    </svg>
-  );
-}
-
 function RepeatGlyph() {
   return (
     <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -559,16 +531,3 @@ function RepeatGlyph() {
   );
 }
 
-function TrashGlyph() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3 4.5h10M6.5 4.5V3.2h3v1.3M4.6 4.5l.6 8.3h5.6l.6-8.3"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}

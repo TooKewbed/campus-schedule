@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScheduleEvent } from './types/event';
 import { createTask, openCount, type Task } from './types/task';
+import { createShoppingItem, type ShoppingItem } from './types/shopping';
 import { createMarker, markersOn, type DayMarker } from './types/dayMarker';
 import { detectConflicts } from './lib/conflicts';
 import { usFederalHolidays } from './lib/holidays';
@@ -22,11 +23,13 @@ import {
   loadEvents,
   loadMarkers,
   loadScheduleView,
+  loadShopping,
   loadShowHolidays,
   loadTasks,
   saveEvents,
   saveMarkers,
   saveScheduleView,
+  saveShopping,
   saveShowHolidays,
   saveTasks,
 } from './lib/storage';
@@ -45,6 +48,7 @@ import ImportantDates from './components/ImportantDates';
 import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
 import ShareDialog from './components/ShareDialog';
+import ShoppingList from './components/ShoppingList';
 import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
 import SyncStatus from './components/SyncStatus';
@@ -88,6 +92,7 @@ const APPEARANCE_OPTIONS: { value: Appearance; label: string }[] = [
 export default function App() {
   const [events, setEvents] = useState<ScheduleEvent[]>(() => loadEvents());
   const [tasks, setTasks] = useState<Task[]>(() => loadTasks());
+  const [shopping, setShopping] = useState<ShoppingItem[]>(() => loadShopping());
   const [markers, setMarkers] = useState<DayMarker[]>(() => loadMarkers());
   const [showHolidays, setShowHolidays] = useState<boolean>(() => loadShowHolidays());
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
@@ -105,8 +110,8 @@ export default function App() {
   // pulls them back down on a new device. Local state stays authoritative for
   // rendering; this only follows it.
   const sync = useSync(
-    { events, tasks, markers, showHolidays },
-    { setEvents, setTasks, setMarkers, setShowHolidays },
+    { events, tasks, shopping, markers, showHolidays },
+    { setEvents, setTasks, setShopping, setMarkers, setShowHolidays },
   );
 
   // Lets handlers record an undo step without taking `events` as a dependency,
@@ -124,6 +129,10 @@ export default function App() {
   useEffect(() => {
     saveTasks(tasks);
   }, [tasks]);
+
+  useEffect(() => {
+    saveShopping(shopping);
+  }, [shopping]);
 
   useEffect(() => {
     saveEvents(events);
@@ -401,6 +410,38 @@ export default function App() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  /* ------------------------------------------------------------- shopping -- */
+  // Its own state and its own handlers rather than a flag on a task: nothing
+  // here has a deadline, a repeat or a course, so nothing here should have to
+  // be filtered back out of the lists that care about those.
+
+  const addShoppingItem = useCallback((title: string) => {
+    setShopping((prev) => [...prev, createShoppingItem(title)]);
+  }, []);
+
+  const toggleShoppingItem = useCallback((id: string) => {
+    setShopping((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, done: !item.done, completedAt: item.done ? null : new Date() }
+          : item,
+      ),
+    );
+  }, []);
+
+  const setShoppingNotes = useCallback((id: string, notes: string) => {
+    setShopping((prev) => prev.map((item) => (item.id === id ? { ...item, notes } : item)));
+  }, []);
+
+  const deleteShoppingItem = useCallback((id: string) => {
+    setShopping((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  /** End of a shop: drop everything already in the basket, keep the rest. */
+  const clearShoppingGot = useCallback(() => {
+    setShopping((prev) => prev.filter((item) => !item.done));
+  }, []);
+
   const dayEvents = useMemo(
     () => events.filter((e) => sameDay(e.start, selected)),
     [events, selected],
@@ -659,6 +700,18 @@ export default function App() {
             onRepeatChange={setTaskRepeat}
             onDelete={deleteTask}
           />
+
+          {/* Below the to-do list, not inside it. Groceries and coursework are
+              both lists of things to do, but mixing them means every glance at
+              what is due competes with what is in the fridge. */}
+          <ShoppingList
+            items={shopping}
+            onAdd={addShoppingItem}
+            onToggle={toggleShoppingItem}
+            onNotesChange={setShoppingNotes}
+            onDelete={deleteShoppingItem}
+            onClearGot={clearShoppingGot}
+          />
         </aside>
       </div>
 
@@ -690,7 +743,7 @@ export default function App() {
         onDeleteSeries={deleteSeries}
       />
 
-      <footer>{storageSummary(events.length, tasks.length)}</footer>
+      <footer>{storageSummary(events.length, tasks.length, shopping.length)}</footer>
     </div>
   );
 }
@@ -703,10 +756,11 @@ function relativeLabel(selected: Date, today: Date): string {
   return `${Math.abs(days)} days ago`;
 }
 
-function storageSummary(eventCount: number, taskCount: number): string {
+function storageSummary(eventCount: number, taskCount: number, shoppingCount: number): string {
   const parts: string[] = [];
   if (eventCount) parts.push(`${eventCount} occurrences`);
   if (taskCount) parts.push(`${taskCount} task${taskCount === 1 ? '' : 's'}`);
+  if (shoppingCount) parts.push(`${shoppingCount} shopping item${shoppingCount === 1 ? '' : 's'}`);
   if (parts.length === 0) return 'Nothing saved yet';
   return `${parts.join(' · ')} · stored locally in this browser`;
 }

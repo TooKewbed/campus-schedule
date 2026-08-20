@@ -1,5 +1,6 @@
 import type { ScheduleEvent } from '../types/event';
 import type { Task } from '../types/task';
+import type { ShoppingItem } from '../types/shopping';
 import type { DayMarker } from '../types/dayMarker';
 
 const KEY = 'campus-schedule:events:v1';
@@ -80,6 +81,50 @@ function reviveDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/* --------------------------------------------------------------- shopping -- */
+
+/**
+ * Note the key prefix. Every key this app has ever written starts with
+ * `campus-schedule:`, from before it was called Skedge, and renaming the prefix
+ * would orphan the saved data of everyone already using it. New keys join the
+ * old scheme rather than starting a tidier one.
+ */
+const SHOPPING_KEY = 'campus-schedule:shopping:v1';
+
+type StoredShoppingItem = Omit<ShoppingItem, 'createdAt' | 'completedAt'> & {
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export function saveShopping(items: ShoppingItem[]): void {
+  try {
+    localStorage.setItem(SHOPPING_KEY, JSON.stringify(items));
+  } catch {
+    // Private browsing or a full quota — not worth interrupting the user over.
+  }
+}
+
+export function loadShopping(): ShoppingItem[] {
+  try {
+    const raw = localStorage.getItem(SHOPPING_KEY);
+    if (!raw) return [];
+
+    const parsed: StoredShoppingItem[] = JSON.parse(raw);
+    return parsed
+      .filter((item) => item && typeof item.title === 'string')
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        done: item.done === true,
+        notes: item.notes ?? '',
+        createdAt: reviveDate(item.createdAt) ?? new Date(),
+        completedAt: reviveDate(item.completedAt),
+      }));
+  } catch {
+    return [];
+  }
 }
 
 /* ---------------------------------------------------------------- markers -- */

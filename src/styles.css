@@ -196,6 +196,11 @@ button { font: inherit; color: inherit; }
    from the schedule when it sat underneath. */
 .layout-side .tasks { margin-top: 0; }
 
+/* The shopping list follows the to-do list in the same column and needs the
+   gap the first one doesn't: two identical cards flush against each other read
+   as one list with a stray heading in the middle. */
+.layout-side .tasks + .tasks { margin-top: 26px; }
+
 /* Below this the margin is too narrow to be a margin; the list returns to the
    flow underneath the schedule, where it started. */
 @media (max-width: 900px) {
@@ -2962,3 +2967,22 @@ dialog.confirm.share {
 /* The native popup takes its colours from the element; a translucent fill
    composites to washed-out text once the list paints over its own surface. */
 .due-repeat select option { background: var(--bg-card); color: var(--label); }
+
+/* ========================================================== shopping list == */
+/* It reuses the to-do list's classes deliberately — same card, same rows — so
+   only what is genuinely different needs styling here. */
+
+/* Emptying the basket sits under the picked-up group, inset to line up with
+   the rows above it rather than the card edge. */
+.shopping-clear {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 16px 14px;
+}
+
+/* Armed, it is a destructive action and says so. Unarmed it stays quiet: this
+   is the ordinary end of a shop, not a warning. */
+.shopping-clear .linkish {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
