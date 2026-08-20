@@ -171,8 +171,8 @@ button { font: inherit; color: inherit; }
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 24px;
-  /* Sticky needs the sidebar to be its own height, not stretched to match the
-     schedule — a full-height item has no room to move within its row. */
+  /* Each column is its own height rather than stretched to match the other,
+     so the margin ends where its last card ends. */
   align-items: start;
 }
 
@@ -180,17 +180,16 @@ button { font: inherit; color: inherit; }
    grid's intrinsic width wins and the whole page gains a horizontal scrollbar. */
 .layout-main { min-width: 0; }
 
-.layout-side {
-  position: sticky;
-  /* Clears the sticky toolbar instead of sliding underneath it. */
-  top: 84px;
-  /* A long list scrolls inside the margin rather than running off-screen,
-     where the bottom of it would be unreachable. */
-  max-height: calc(100dvh - 108px);
-  overflow-y: auto;
-  /* Reaching the end of the list shouldn't start scrolling the page behind it. */
-  overscroll-behavior: contain;
-}
+/* The margin scrolls with the page, not inside itself.
+ *
+ * It used to be sticky with its own scroller, which kept the to-do list in
+ * view but cost more than it was worth once there were three cards: a scroll
+ * region inside a scrolling page means the wheel does different things a few
+ * pixels apart, a scrollbar sits permanently down the middle of the layout and
+ * eats width from every row in it, and on a trackpad the inner region swallows
+ * the gesture until it hits its own end. One page, one scrollbar.
+ */
+.layout-side { min-width: 0; }
 
 /* It leads its own column now, so it no longer needs the gap that separated it
    from the schedule when it sat underneath. */
@@ -201,15 +200,10 @@ button { font: inherit; color: inherit; }
    as one list with a stray heading in the middle. */
 .layout-side .tasks + .tasks { margin-top: 26px; }
 
-/* Below this the margin is too narrow to be a margin; the list returns to the
-   flow underneath the schedule, where it started. */
+/* Below this the margin is too narrow to be a margin; the lists return to the
+   flow underneath the schedule, where they started. */
 @media (max-width: 900px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
-  .layout-side {
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
   .layout-side .tasks { margin-top: 26px; }
 }
 
@@ -2985,4 +2979,117 @@ dialog.confirm.share {
 .shopping-clear .linkish {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================== quick notes == */
+/* Reuses the card and heading of the two lists above it; only the row is a
+   different shape, because a note is a block of text rather than a line. */
+
+/* The add field is a textarea so a pasted address keeps its lines. Everything
+   here exists to stop it looking like one: no resize grip, no scrollbar until
+   it hits the cap, and the same line-height the inputs above it use. */
+.note-field {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  resize: none;
+  overflow-y: auto;
+  font: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--label-primary);
+}
+.note-field:focus { outline: none; }
+.note-field::placeholder { color: var(--label-tertiary); }
+
+/* Top-aligned rather than centred: once the field is three lines tall, a
+   centred + and Save would drift away from the first line being typed. */
+.note-add { align-items: flex-start; }
+.note-add .task-add-glyph { margin-top: 1px; }
+.note-add .btn.tiny { margin-top: -2px; }
+
+.note-list { list-style: none; margin: 0; padding: 0; }
+
+.note-item {
+  padding: 11px 16px 9px;
+  border-top: 1px solid var(--separator);
+}
+.task-add + .note-list .note-item:first-child { border-top: 1px solid var(--separator); }
+
+/* The note itself is a button so the whole block is one click target to edit,
+   but it must read as text: full width, left aligned, wrapping, and keeping
+   the line breaks that were typed. */
+.note-text {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--label-primary);
+  white-space: pre-wrap;
+  /* A pasted URL has no spaces to break at and would otherwise widen the
+     whole column. */
+  overflow-wrap: anywhere;
+  cursor: text;
+  border-radius: 6px;
+}
+.note-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.note-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+  min-height: 22px;
+}
+
+.note-time,
+.note-hint {
+  font-size: 11px;
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The delete button is dimmed rather than hidden. Three trash icons stacked
+   down the column would be the loudest thing in the margin, but a control that
+   only appears on hover is a control a phone cannot find — and this app is
+   meant to be installed on one. Dimmed is quiet on a desktop and still there
+   on a touchscreen, with no media query that has to guess which it is. */
+.note-item .icon-btn.tiny,
+.note-edit .icon-btn.tiny {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: opacity 120ms ease;
+}
+.note-item:hover .icon-btn.tiny,
+.note-item:focus-within .icon-btn.tiny,
+.note-item .icon-btn.tiny:focus-visible,
+.note-edit .icon-btn.tiny { opacity: 1; }
+.note-item .icon-btn.tiny svg,
+.note-edit .icon-btn.tiny svg { width: 13px; height: 13px; }
+
+.note-edit textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 62px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 20px;
 }

@@ -3,6 +3,7 @@ import type { ColorName, EventCategory, ScheduleEvent } from '../types/event';
 import type { DayMarker } from '../types/dayMarker';
 import type { Task } from '../types/task';
 import type { ShoppingItem } from '../types/shopping';
+import type { QuickNote } from '../types/quickNote';
 import { isRepeat } from './repeat';
 
 /**
@@ -60,6 +61,14 @@ interface ShoppingRow {
   notes: string;
   created_at: string;
   completed_at: string | null;
+}
+
+interface QuickNoteRow {
+  user_id: string;
+  id: string;
+  text: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface MarkerRow {
@@ -166,6 +175,28 @@ function rowToShopping(r: ShoppingRow): ShoppingItem {
   };
 }
 
+function quickNoteToRow(userId: string, n: QuickNote): QuickNoteRow {
+  return {
+    user_id: userId,
+    id: n.id,
+    text: n.text,
+    created_at: n.createdAt.toISOString(),
+    updated_at: n.updatedAt.toISOString(),
+  };
+}
+
+function rowToQuickNote(r: QuickNoteRow): QuickNote {
+  const createdAt = new Date(r.created_at);
+  return {
+    id: r.id,
+    text: r.text ?? '',
+    createdAt,
+    // Falls back to creation rather than to now, so a row written before
+    // this column existed does not read as freshly edited.
+    updatedAt: r.updated_at ? new Date(r.updated_at) : createdAt,
+  };
+}
+
 function markerToRow(userId: string, m: DayMarker): MarkerRow {
   return {
     user_id: userId,
@@ -232,6 +263,7 @@ export interface RemoteSnapshot {
   events: ScheduleEvent[];
   tasks: Task[];
   shopping: ShoppingItem[];
+  notes: QuickNote[];
   markers: DayMarker[];
   showHolidays: boolean;
 }
@@ -256,10 +288,11 @@ function isMissingTable(error: { code?: string; message?: string }): boolean {
 }
 
 export async function fetchAll(supabase: SupabaseClient): Promise<RemoteSnapshot> {
-  const [events, tasks, shopping, markers, prefs] = await Promise.all([
+  const [events, tasks, shopping, notes, markers, prefs] = await Promise.all([
     supabase.from('events').select('*'),
     supabase.from('tasks').select('*'),
     supabase.from('shopping_items').select('*'),
+    supabase.from('quick_notes').select('*'),
     supabase.from('day_markers').select('*'),
     supabase.from('preferences').select('show_holidays').maybeSingle(),
   ]);
@@ -267,20 +300,21 @@ export async function fetchAll(supabase: SupabaseClient): Promise<RemoteSnapshot
   const failure = events.error ?? tasks.error ?? markers.error ?? prefs.error;
   if (failure) throw new Error(failure.message);
 
-  // The shopping table is newer than the rest of the schema, so it can be
+  // These two tables are newer than the rest of the schema, so either can be
   // genuinely absent on an account whose migrations have not been run yet.
   // That must not take down the schedule with it: a missing table means an
   // empty list, and everything else still syncs. Any other error still counts,
   // because "the query failed" is not the same as "the feature is not
   // installed" — and a failed write will still say so out loud.
-  if (shopping.error && !isMissingTable(shopping.error)) {
-    throw new Error(shopping.error.message);
+  for (const late of [shopping, notes]) {
+    if (late.error && !isMissingTable(late.error)) throw new Error(late.error.message);
   }
 
   return {
     events: (events.data as EventRow[]).map(rowToEvent),
     tasks: (tasks.data as TaskRow[]).map(rowToTask),
     shopping: ((shopping.data ?? []) as ShoppingRow[]).map(rowToShopping),
+    notes: ((notes.data ?? []) as QuickNoteRow[]).map(rowToQuickNote),
     markers: (markers.data as MarkerRow[]).map(rowToMarker),
     // No preferences row yet means a first sign-in, and holidays default on.
     showHolidays: prefs.data?.show_holidays ?? true,
@@ -345,6 +379,15 @@ export function pushShopping(
   return push(supabase, 'shopping_items', prev, next, (item) => shoppingToRow(userId, item));
 }
 
+export function pushQuickNotes(
+  supabase: SupabaseClient,
+  userId: string,
+  prev: QuickNote[],
+  next: QuickNote[],
+): Promise<void> {
+  return push(supabase, 'quick_notes', prev, next, (n) => quickNoteToRow(userId, n));
+}
+
 /**
  * Only hand this the user's own markers. Federal holidays are computed per
  * displayed year and must never be written — storing them would freeze a
@@ -392,11 +435,13 @@ export function shouldSeedFromLocal(remote: RemoteSnapshot, local: RemoteSnapsho
     remote.events.length === 0 &&
     remote.tasks.length === 0 &&
     remote.shopping.length === 0 &&
+    remote.notes.length === 0 &&
     remote.markers.length === 0;
   const localHasData =
     local.events.length > 0 ||
     local.tasks.length > 0 ||
     local.shopping.length > 0 ||
+    local.notes.length > 0 ||
     local.markers.length > 0;
   return remoteEmpty && localHasData;
 }

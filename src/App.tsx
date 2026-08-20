@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScheduleEvent } from './types/event';
 import { createTask, openCount, type Task } from './types/task';
 import { createShoppingItem, type ShoppingItem } from './types/shopping';
+import { createQuickNote, type QuickNote } from './types/quickNote';
 import { createMarker, markersOn, type DayMarker } from './types/dayMarker';
 import { detectConflicts } from './lib/conflicts';
 import { usFederalHolidays } from './lib/holidays';
@@ -23,12 +24,14 @@ import {
   loadEvents,
   loadMarkers,
   loadScheduleView,
+  loadQuickNotes,
   loadShopping,
   loadShowHolidays,
   loadTasks,
   saveEvents,
   saveMarkers,
   saveScheduleView,
+  saveQuickNotes,
   saveShopping,
   saveShowHolidays,
   saveTasks,
@@ -48,6 +51,7 @@ import ImportantDates from './components/ImportantDates';
 import ManualEntry from './components/ManualEntry';
 import SegmentedControl from './components/SegmentedControl';
 import ShareDialog from './components/ShareDialog';
+import QuickNotes from './components/QuickNotes';
 import ShoppingList from './components/ShoppingList';
 import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
@@ -93,6 +97,7 @@ export default function App() {
   const [events, setEvents] = useState<ScheduleEvent[]>(() => loadEvents());
   const [tasks, setTasks] = useState<Task[]>(() => loadTasks());
   const [shopping, setShopping] = useState<ShoppingItem[]>(() => loadShopping());
+  const [notes, setNotes] = useState<QuickNote[]>(() => loadQuickNotes());
   const [markers, setMarkers] = useState<DayMarker[]>(() => loadMarkers());
   const [showHolidays, setShowHolidays] = useState<boolean>(() => loadShowHolidays());
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
@@ -110,8 +115,8 @@ export default function App() {
   // pulls them back down on a new device. Local state stays authoritative for
   // rendering; this only follows it.
   const sync = useSync(
-    { events, tasks, shopping, markers, showHolidays },
-    { setEvents, setTasks, setShopping, setMarkers, setShowHolidays },
+    { events, tasks, shopping, notes, markers, showHolidays },
+    { setEvents, setTasks, setShopping, setNotes, setMarkers, setShowHolidays },
   );
 
   // Lets handlers record an undo step without taking `events` as a dependency,
@@ -133,6 +138,10 @@ export default function App() {
   useEffect(() => {
     saveShopping(shopping);
   }, [shopping]);
+
+  useEffect(() => {
+    saveQuickNotes(notes);
+  }, [notes]);
 
   useEffect(() => {
     saveEvents(events);
@@ -442,6 +451,25 @@ export default function App() {
     setShopping((prev) => prev.filter((item) => !item.done));
   }, []);
 
+  /* ---------------------------------------------------------- quick notes -- */
+
+  const addQuickNote = useCallback((text: string) => {
+    setNotes((prev) => [...prev, createQuickNote(text)]);
+  }, []);
+
+  // updatedAt moves on every edit, which is what makes "edited" honest — and
+  // what makes the sync diff notice a note whose text changed back to what it
+  // was before.
+  const setQuickNoteText = useCallback((id: string, text: string) => {
+    setNotes((prev) =>
+      prev.map((note) => (note.id === id ? { ...note, text, updatedAt: new Date() } : note)),
+    );
+  }, []);
+
+  const deleteQuickNote = useCallback((id: string) => {
+    setNotes((prev) => prev.filter((note) => note.id !== id));
+  }, []);
+
   const dayEvents = useMemo(
     () => events.filter((e) => sameDay(e.start, selected)),
     [events, selected],
@@ -711,6 +739,17 @@ export default function App() {
             onNotesChange={setShoppingNotes}
             onDelete={deleteShoppingItem}
             onClearGot={clearShoppingGot}
+          />
+
+          {/* Last in the column, because it is the one with nothing to act on.
+              The two lists above it answer "what do I have to do"; this one
+              only holds what you did not want to lose. */}
+          <QuickNotes
+            notes={notes}
+            now={now}
+            onAdd={addQuickNote}
+            onChange={setQuickNoteText}
+            onDelete={deleteQuickNote}
           />
         </aside>
       </div>

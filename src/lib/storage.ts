@@ -1,6 +1,7 @@
 import type { ScheduleEvent } from '../types/event';
 import type { Task } from '../types/task';
 import type { ShoppingItem } from '../types/shopping';
+import type { QuickNote } from '../types/quickNote';
 import type { DayMarker } from '../types/dayMarker';
 
 const KEY = 'campus-schedule:events:v1';
@@ -122,6 +123,48 @@ export function loadShopping(): ShoppingItem[] {
         createdAt: reviveDate(item.createdAt) ?? new Date(),
         completedAt: reviveDate(item.completedAt),
       }));
+  } catch {
+    return [];
+  }
+}
+
+/* ------------------------------------------------------------ quick notes -- */
+
+const NOTES_KEY = 'campus-schedule:notes:v1';
+
+type StoredQuickNote = Omit<QuickNote, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function saveQuickNotes(notes: QuickNote[]): void {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+  } catch {
+    // Private browsing or a full quota — not worth interrupting the user over.
+  }
+}
+
+export function loadQuickNotes(): QuickNote[] {
+  try {
+    const raw = localStorage.getItem(NOTES_KEY);
+    if (!raw) return [];
+
+    const parsed: StoredQuickNote[] = JSON.parse(raw);
+    return parsed
+      .filter((n) => n && typeof n.text === 'string')
+      .map((n) => {
+        const createdAt = reviveDate(n.createdAt) ?? new Date();
+        return {
+          id: n.id,
+          text: n.text,
+          createdAt,
+          // A note written before this field existed was never edited, so it
+          // falls back to its creation time rather than to now — which would
+          // label every old note "edited" the first time it was read back.
+          updatedAt: reviveDate(n.updatedAt) ?? createdAt,
+        };
+      });
   } catch {
     return [];
   }

@@ -7,6 +7,7 @@ import {
   pushEvents,
   pushMarkers,
   pushPreferences,
+  pushQuickNotes,
   pushShopping,
   pushTasks,
   shouldSeedFromLocal,
@@ -16,6 +17,7 @@ import type { ScheduleEvent } from '../types/event';
 import type { DayMarker } from '../types/dayMarker';
 import type { Task } from '../types/task';
 import type { ShoppingItem } from '../types/shopping';
+import type { QuickNote } from '../types/quickNote';
 
 /**
  * Binds the app's state to the account, in one place.
@@ -42,6 +44,7 @@ interface State {
   events: ScheduleEvent[];
   tasks: Task[];
   shopping: ShoppingItem[];
+  notes: QuickNote[];
   markers: DayMarker[];
   showHolidays: boolean;
 }
@@ -50,6 +53,7 @@ interface Setters {
   setEvents: (events: ScheduleEvent[]) => void;
   setTasks: (tasks: Task[]) => void;
   setShopping: (items: ShoppingItem[]) => void;
+  setNotes: (notes: QuickNote[]) => void;
   setMarkers: (markers: DayMarker[]) => void;
   setShowHolidays: (value: boolean) => void;
 }
@@ -142,6 +146,7 @@ export function useSync(state: State, setters: Setters): Sync {
             events: [],
             tasks: [],
             shopping: [],
+            notes: [],
             markers: [],
             showHolidays: true,
           };
@@ -150,6 +155,7 @@ export function useSync(state: State, setters: Setters): Sync {
             pushEvents(client, userId, empty.events, local.events),
             pushTasks(client, userId, empty.tasks, local.tasks),
             pushShopping(client, userId, empty.shopping, local.shopping),
+            pushQuickNotes(client, userId, empty.notes, local.notes),
             pushMarkers(client, userId, empty.markers, local.markers),
             pushPreferences(client, userId, local.showHolidays),
           ]);
@@ -161,11 +167,12 @@ export function useSync(state: State, setters: Setters): Sync {
           // the only reading of "my schedule" that stays consistent across
           // devices.
           hydratingRef.current = true;
-          const { setEvents, setTasks, setShopping, setMarkers, setShowHolidays } =
+          const { setEvents, setTasks, setShopping, setNotes, setMarkers, setShowHolidays } =
             settersRef.current;
           setEvents(remote.events);
           setTasks(remote.tasks);
           setShopping(remote.shopping);
+          setNotes(remote.notes);
           setMarkers(remote.markers);
           setShowHolidays(remote.showHolidays);
           remoteRef.current = remote;
@@ -209,6 +216,7 @@ export function useSync(state: State, setters: Setters): Sync {
           pushEvents(client, userId, known.events, current.events),
           pushTasks(client, userId, known.tasks, current.tasks),
           pushShopping(client, userId, known.shopping, current.shopping),
+          pushQuickNotes(client, userId, known.notes, current.notes),
           pushMarkers(client, userId, known.markers, current.markers),
           known.showHolidays === current.showHolidays
             ? Promise.resolve()
@@ -227,7 +235,7 @@ export function useSync(state: State, setters: Setters): Sync {
     }, WRITE_DELAY_MS);
 
     return () => clearTimeout(timer);
-  }, [session, state.events, state.tasks, state.shopping, state.markers, state.showHolidays]);
+  }, [session, state.events, state.tasks, state.shopping, state.notes, state.markers, state.showHolidays]);
 
   /* --------------------------------------------------------------- exits -- */
 
@@ -241,11 +249,12 @@ export function useSync(state: State, setters: Setters): Sync {
    * into whichever account signed in next.
    */
   const signOutAndForget = useCallback(async () => {
-    const { setEvents, setTasks, setShopping, setMarkers, setShowHolidays } = settersRef.current;
+    const { setEvents, setTasks, setShopping, setNotes, setMarkers, setShowHolidays } = settersRef.current;
     hydratingRef.current = true;
     setEvents([]);
     setTasks([]);
     setShopping([]);
+    setNotes([]);
     setMarkers([]);
     setShowHolidays(true);
     remoteRef.current = null;
