@@ -75,7 +75,7 @@ export default function SignIn({ supabase, onContinueOffline }: Props) {
   return (
     <div className="signin">
       <form className="signin-card" onSubmit={handleSubmit}>
-        <h1 className="signin-title">Campus Schedule</h1>
+        <h1 className="signin-title">Skedge</h1>
         <p className="signin-sub">
           {mode === 'in'
             ? 'Sign in to reach your schedule from any device.'
