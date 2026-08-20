@@ -1,3 +1,5 @@
+import type { Repeat } from '../lib/repeat';
+
 /**
  * The task model.
  *
@@ -20,6 +22,12 @@ export interface Task {
   /** Set only for coursework. Reserved for the assignment tracker. */
   courseCode?: string;
   dueDate?: Date;
+  /**
+   * How often this comes back. Only meaningful with a dueDate — the repeat
+   * needs a first date to count from — and the next occurrence is created when
+   * this one is ticked off rather than by anything running in the background.
+   */
+  repeat?: Repeat;
 }
 
 export function createTask(title: string, courseCode?: string): Task {

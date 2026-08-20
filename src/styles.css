@@ -2923,3 +2923,42 @@ dialog.confirm.share {
 /* Replaces the chip strip's bottom margin so the grid does not jump up when
    the view changes. */
 .week-gap { height: 14px; }
+
+/* A repeating task is indistinguishable from any other until it comes back, so
+   the row says so rather than letting the reappearance be the first hint. */
+.repeat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  padding: 2.5px 8px 2.5px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--fill-tertiary);
+  color: var(--label-secondary);
+}
+.repeat-chip svg { width: 11px; height: 11px; flex: none; }
+.task.done .repeat-chip { color: var(--label-tertiary); }
+
+.due-repeat { margin-top: 2px; }
+.due-repeat select {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: -0.008em;
+  color: var(--label);
+  background: var(--fill-tertiary);
+  border: none;
+  border-radius: 10px;
+  padding: 9px 11px;
+  outline: none;
+}
+.due-repeat select:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent);
+}
+/* The native popup takes its colours from the element; a translucent fill
+   composites to washed-out text once the list paints over its own surface. */
+.due-repeat select option { background: var(--bg-card); color: var(--label); }

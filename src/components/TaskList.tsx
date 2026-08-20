@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { openCount, type Task } from '../types/task';
+import type { Repeat } from '../lib/repeat';
 import {
   defaultDeadline,
   describeDeadline,
@@ -11,6 +12,7 @@ import {
 } from '../lib/deadlines';
 import { coursesWithTasks, tasksForCourse, splitCourseFromTitle, type Course } from '../lib/courses';
 import type { RemindersApi } from '../hooks/useReminders';
+import { isRepeat, REPEAT_LABEL, REPEAT_OPTIONS, describeRepeat } from '../lib/repeat';
 import DatePicker from './DatePicker';
 
 interface Props {
@@ -24,6 +26,7 @@ interface Props {
   onNotesChange: (id: string, notes: string) => void;
   onDueChange: (id: string, due: Date | null) => void;
   onCourseChange: (id: string, code: string | null) => void;
+  onRepeatChange: (id: string, repeat: Repeat | null) => void;
   onDelete: (id: string) => void;
 }
 
@@ -40,6 +43,7 @@ export default function TaskList({
   onNotesChange,
   onDueChange,
   onCourseChange,
+  onRepeatChange,
   onDelete,
 }: Props) {
   const [draft, setDraft] = useState('');
@@ -136,7 +140,7 @@ export default function TaskList({
               )}
             </button>
 
-            {(task.courseCode || deadline) && (
+            {(task.courseCode || deadline || task.repeat) && (
               <span className="task-flags">
                 {task.courseCode && (
                   <span className={`course-chip color-${colorOf(task.courseCode)}`}>
@@ -146,6 +150,14 @@ export default function TaskList({
                 {deadline && (
                   <span className={`due-chip urgency-${deadline.urgency}`} title={deadline.full}>
                     {deadline.label}
+                  </span>
+                )}
+                {/* A repeating task looks like any other until it comes back,
+                    which is a surprise the row can cheaply avoid. */}
+                {task.repeat && (
+                  <span className="repeat-chip" title={describeRepeat(task) ?? undefined}>
+                    <RepeatGlyph />
+                    {REPEAT_LABEL[task.repeat]}
                   </span>
                 )}
               </span>
@@ -226,6 +238,7 @@ export default function TaskList({
               task={task}
               now={now}
               onChange={(due) => onDueChange(task.id, due)}
+              onRepeatChange={(repeat) => onRepeatChange(task.id, repeat)}
               onClose={() => setPanels((prev) => ({ ...prev, [task.id]: undefined }))}
             />
           </div>
@@ -370,10 +383,11 @@ interface EditorProps {
   task: Task;
   now: Date;
   onChange: (due: Date | null) => void;
+  onRepeatChange: (repeat: Repeat | null) => void;
   onClose: () => void;
 }
 
-function DeadlineEditor({ task, now, onChange, onClose }: EditorProps) {
+function DeadlineEditor({ task, now, onChange, onRepeatChange, onClose }: EditorProps) {
   const due = task.dueDate ?? defaultDeadline(now);
   const parts = toDueParts(due);
 
@@ -428,6 +442,27 @@ function DeadlineEditor({ task, now, onChange, onClose }: EditorProps) {
           </span>
         </label>
       </div>
+
+      <label className="field due-repeat">
+        <span className="field-label">Repeat</span>
+        <select
+          value={task.repeat ?? ''}
+          onChange={(e) => onRepeatChange(isRepeat(e.target.value) ? e.target.value : null)}
+        >
+          {REPEAT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {task.repeat && (
+          <span className="field-hint">
+            {/* Says when the next one appears, because "every week" alone does
+                not explain why nothing showed up yet. */}
+            Ticking it off creates the next one.
+          </span>
+        )}
+      </label>
 
       <div className="due-actions">
         <button className="linkish" onClick={() => onChange(endOfDay(due))}>
@@ -506,6 +541,20 @@ function NoteGlyph({ filled }: { filled: boolean }) {
         strokeLinecap="round"
         opacity={filled ? 1 : 0.55}
       />
+    </svg>
+  );
+}
+
+function RepeatGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M3 7a5 5 0 0 1 8.5-3.5M13 9a5 5 0 0 1-8.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path d="M11.5 1.8v2.2H9.3M4.5 14.2V12h2.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ColorName, EventCategory, ScheduleEvent } from '../types/event';
 import type { DayMarker } from '../types/dayMarker';
 import type { Task } from '../types/task';
+import { isRepeat } from './repeat';
 
 /**
  * Translation between the app's in-memory model and the database.
@@ -47,6 +48,7 @@ interface TaskRow {
   completed_at: string | null;
   course_code: string | null;
   due_date: string | null;
+  repeat: string | null;
 }
 
 interface MarkerRow {
@@ -110,6 +112,7 @@ function taskToRow(userId: string, t: Task): TaskRow {
     completed_at: t.completedAt ? t.completedAt.toISOString() : null,
     course_code: t.courseCode ?? null,
     due_date: t.dueDate ? t.dueDate.toISOString() : null,
+    repeat: t.repeat ?? null,
   };
 }
 
@@ -123,6 +126,9 @@ function rowToTask(r: TaskRow): Task {
     completedAt: r.completed_at ? new Date(r.completed_at) : null,
     courseCode: r.course_code ?? undefined,
     dueDate: r.due_date ? new Date(r.due_date) : undefined,
+    // An unrecognised value — a repeat added by a newer build — is treated as
+    // no repeat rather than being carried through as something nothing handles.
+    repeat: isRepeat(r.repeat) ? r.repeat : undefined,
   };
 }
 

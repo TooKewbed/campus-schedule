@@ -54,6 +54,7 @@ import WeekGrid from './components/WeekGrid';
 import { useSync } from './hooks/useSync';
 import { useReminders } from './hooks/useReminders';
 import { coursesFrom, dueOn } from './lib/courses';
+import { nextOccurrence, type Repeat } from './lib/repeat';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 
 /** How far around today recurring events get expanded on import. */
@@ -353,11 +354,34 @@ export default function App() {
     );
   }, []);
 
+  /**
+   * Ticking a repeating task off also creates the next one.
+   *
+   * Generated on completion rather than on a schedule: nothing has to run in
+   * the background, the list never fills with future copies nobody asked for,
+   * and an unfinished task cannot be overtaken by its own successor. Unticking
+   * does not remove the successor — by then it may have its own notes, and
+   * silently deleting work is worse than leaving a duplicate to delete by hand.
+   */
   const toggleTask = useCallback((id: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
+    setTasks((prev) => {
+      const target = prev.find((t) => t.id === id);
+      const finishing = target !== undefined && !target.done;
+
+      const updated = prev.map((t) =>
         t.id === id ? { ...t, done: !t.done, completedAt: t.done ? null : new Date() } : t,
-      ),
+      );
+
+      if (!finishing || !target) return updated;
+
+      const next = nextOccurrence(target, new Date());
+      return next ? [...updated, next] : updated;
+    });
+  }, []);
+
+  const setTaskRepeat = useCallback((id: string, repeat: Repeat | null) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, repeat: repeat ?? undefined } : t)),
     );
   }, []);
 
@@ -632,6 +656,7 @@ export default function App() {
             onNotesChange={setTaskNotes}
             onDueChange={setTaskDue}
             onCourseChange={setTaskCourse}
+            onRepeatChange={setTaskRepeat}
             onDelete={deleteTask}
           />
         </aside>
