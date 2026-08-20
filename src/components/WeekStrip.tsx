@@ -64,6 +64,20 @@ export default function WeekStrip({
         />
         <span className="week-range">{weekRange(monday)}</span>
 
+        {/* In week view the grid's own column headers are the day selector, so
+            the chip strip below is gone — but its arrows were the only way to
+            change week, and they come up here rather than disappearing with it. */}
+        {view === 'week' && (
+          <div className="week-head-nav">
+            <button className="week-arrow" onClick={() => onShiftWeek(-1)} aria-label="Previous week">
+              ‹
+            </button>
+            <button className="week-arrow" onClick={() => onShiftWeek(1)} aria-label="Next week">
+              ›
+            </button>
+          </div>
+        )}
+
         {/* Lives with the date navigation rather than in the toolbar: this row
             already governs what stretch of time the schedule below is showing,
             and how much of it is the same question. */}
@@ -75,6 +89,9 @@ export default function WeekStrip({
         />
       </div>
 
+      {view === 'week' && <div className="week-gap" />}
+
+      {view === 'day' && (
       <div className="week-nav">
         <button className="week-arrow" onClick={() => onShiftWeek(-1)} aria-label="Previous week">
           ‹
@@ -114,6 +131,7 @@ export default function WeekStrip({
           ›
         </button>
       </div>
+      )}
     </div>
   );
 }

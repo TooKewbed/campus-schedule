@@ -555,6 +555,17 @@ button { font: inherit; color: inherit; }
   color: var(--label-tertiary);
 }
 
+/* The schedule owns the space beneath it, in both views.
+   It used to rely on the next panel bringing its own top margin, which worked
+   only while that panel was the commitment register — and that one hides itself
+   when there is nothing on the schedule yet, leaving "Add a class" jammed
+   straight against the grid for exactly the person seeing the app for the
+   first time. */
+.board,
+.week-grid {
+  margin-bottom: 20px;
+}
+
 .board {
   background: var(--bg-card);
   border-radius: var(--r-xl);
@@ -1994,9 +2005,10 @@ dialog.confirm.sheet { max-width: 460px; }
    Split out of the entry panel, which was being a form and a register at the
    same time and doing neither clearly. */
 
-/* Only a top margin of its own: the card itself, and the 20px below it, come
-   from `.manual`, which this now shares with the two panels underneath. */
-.commitments { margin-top: 20px; }
+/* No margin of its own: the card and the 20px below it come from `.manual`,
+   which this shares with the two panels underneath, and the space above comes
+   from the schedule. Keeping a top margin here too would have left the gap
+   depending on which of two rules happened to win. */
 
 .commitment-days {
   display: grid;
@@ -2896,3 +2908,18 @@ dialog.confirm.share {
 @media (max-width: 560px) {
   .wg-hint { margin: 10px 14px 0; }
 }
+
+/* Week arrows promoted into the header row, where they are the only week
+   navigation left once the day chips are gone. Sized to the row rather than
+   stretched to a strip's height, which is what they flank in day view. */
+.week-head-nav { display: flex; gap: 6px; align-self: center; flex: none; }
+.week-head-nav .week-arrow {
+  width: 30px;
+  height: 28px;
+  font-size: 17px;
+  border-radius: 9px;
+}
+
+/* Replaces the chip strip's bottom margin so the grid does not jump up when
+   the view changes. */
+.week-gap { height: 14px; }
