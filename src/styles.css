@@ -3093,3 +3093,325 @@ dialog.confirm.share {
   font-size: 15px;
   line-height: 20px;
 }
+
+/* ================================================ spans and moments == */
+/* Two shapes the grid could not express before: an event running across
+   several days, and a time with no end. */
+
+/* ---- the band above the grid ---- */
+
+/* Whole-day events and out-of-hours moments. Above the grid rather than on it,
+   because neither has a top and bottom edge inside a single day. */
+.allday {
+  list-style: none;
+  margin: 0;
+  /* The bottom pad clears the grid: the first hour label is centred on the
+     top gridline, so half of it sits above the schedule box and a band with
+     no gap under it lands on top of "8:00 AM". */
+  padding: 10px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.allday-item {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 11px;
+  border: none;
+  border-left: 3px solid var(--ev-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ev-color) 13%, var(--bg-card));
+  color: var(--label-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: filter var(--dur-press) var(--ease-out), transform var(--dur-press) var(--ease-out);
+}
+.allday-item:hover { filter: brightness(0.97); }
+.allday-item:active { transform: scale(0.995); }
+.allday-item:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
+  outline-offset: 1px;
+}
+
+/* A moment in the band is a time, not a range, so it is set apart from the
+   date ranges beside it by a dashed edge rather than a different colour. */
+.allday-item.is-moment { border-left-style: dashed; }
+
+.allday-when {
+  flex: none;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ev-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.allday-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allday-where {
+  flex: none;
+  font-size: 11px;
+  color: var(--label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+}
+
+/* ---- a block that runs off the day ---- */
+
+/* Square off the edge it continues through: a rounded corner reads as the end
+   of the thing, and this is not the end of it. */
+.ev.from-before,
+.ev-flex.from-before {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: 2px dashed var(--ev-color);
+}
+.ev.into-after,
+.ev-flex.into-after {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 2px dashed var(--ev-color);
+}
+
+/* ---- a moment on the grid ---- */
+
+/* A line, not a box. It says when something happens without claiming any of
+   the time either side of it — which is the whole point of not making you
+   invent an end time. */
+.ev-moment {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  /* Above the free-time shading and gridlines, below a real block: a block is
+     the thing you can actually be inside of. */
+  z-index: 3;
+}
+.ev-moment::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: -1px;
+  height: 0;
+  border-top: 2px dotted var(--ev-color);
+  opacity: 0.75;
+}
+
+.ev-moment-knob {
+  position: relative;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: 1px;
+  border-radius: 50%;
+  background: var(--ev-color);
+}
+
+.ev-moment-label {
+  position: relative;
+  max-width: calc(100% - 26px);
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--bg-card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ev-color) 35%, transparent);
+  color: var(--label-primary);
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ev-moment-label b {
+  font-weight: 650;
+  color: var(--ev-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-moment:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The delete cross sits on the label, which is the only part with a box. */
+.ev-moment .ev-delete {
+  position: relative;
+  top: auto;
+  right: auto;
+  opacity: 0;
+}
+.ev-moment:hover .ev-delete,
+.ev-moment:focus-within .ev-delete { opacity: 1; }
+
+/* ---- the four-way choice ---- */
+
+/* Two options fit a row; four do not, so they become a grid rather than
+   squeezing to a quarter of the width each. */
+.repeat-choice.four {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .repeat-choice.four { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The same palette the blocks use, so a trip keeps its colour whether it is
+   drawn as a band, a marker or a block. Written once for both new elements
+   rather than duplicated per element. */
+.allday-item.blue,   .ev-moment.blue   { --ev-color: var(--blue); }
+.allday-item.orange, .ev-moment.orange { --ev-color: var(--purple); }
+.allday-item.violet, .ev-moment.violet { --ev-color: var(--indigo); }
+.allday-item.green,  .ev-moment.green  { --ev-color: var(--green); }
+.allday-item.aqua,   .ev-moment.aqua   { --ev-color: var(--teal); }
+.allday-item.yellow, .ev-moment.yellow { --ev-color: var(--yellow); }
+.allday-item.exam,   .ev-moment.exam   { --ev-color: var(--red); }
+
+/* ---- the week's all-day row ---- */
+
+/* Same column template as the header and the body, so a band lines up with the
+   day it belongs to. Written out rather than inherited because these are three
+   sibling grids, not one. */
+.wg-allday {
+  display: grid;
+  grid-template-columns: 54px repeat(7, minmax(0, 1fr));
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--separator);
+}
+
+.wg-allday-label {
+  position: static;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px 8px 6px 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--label-tertiary);
+  border-right: 1px solid var(--separator);
+}
+
+.wg-allday-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 3px;
+  min-width: 0;
+  border-right: 1px solid var(--separator);
+}
+.wg-allday-col:last-child { border-right: none; }
+
+.wg-band {
+  width: 100%;
+  border: none;
+  border-left: 3px solid var(--ev-color, var(--blue));
+  border-radius: 5px;
+  padding: 3px 5px;
+  background: color-mix(in srgb, var(--ev-color, var(--blue)) 16%, var(--bg-card));
+  color: var(--label-primary);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 13px;
+  font-weight: 550;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.wg-band.is-moment { border-left-style: dashed; }
+.wg-band b {
+  color: var(--ev-color, var(--blue));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wg-band:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--blue) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.wg-band.blue   { --ev-color: var(--blue); }
+.wg-band.orange { --ev-color: var(--purple); }
+.wg-band.violet { --ev-color: var(--indigo); }
+.wg-band.green  { --ev-color: var(--green); }
+.wg-band.aqua   { --ev-color: var(--teal); }
+.wg-band.yellow { --ev-color: var(--yellow); }
+.wg-band.exam   { --ev-color: var(--red); }
+
+/* ---- a moment in a week column ---- */
+
+/* No room for a time label at a seventh of the width, so the column shows the
+   name and the dotted line; the time is in the tooltip and in the day view. */
+.wg-moment {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  z-index: 3;
+}
+.wg-moment::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  border-top: 2px dotted var(--ev-color, var(--blue));
+  opacity: 0.75;
+}
+.wg-moment-knob {
+  position: relative;
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ev-color, var(--blue));
+}
+.wg-moment-label {
+  position: relative;
+  max-width: calc(100% - 10px);
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--ev-color, var(--blue));
+  font-size: 9.5px;
+  line-height: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wg-moment:focus-visible { outline: 2px solid color-mix(in srgb, var(--blue) 55%, transparent); }
+
+.wg-moment.blue   { --ev-color: var(--blue); }
+.wg-moment.orange { --ev-color: var(--purple); }
+.wg-moment.violet { --ev-color: var(--indigo); }
+.wg-moment.green  { --ev-color: var(--green); }
+.wg-moment.aqua   { --ev-color: var(--teal); }
+.wg-moment.yellow { --ev-color: var(--yellow); }
+.wg-moment.exam   { --ev-color: var(--red); }

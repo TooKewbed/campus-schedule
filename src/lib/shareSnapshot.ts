@@ -1,6 +1,7 @@
 import { colorFor } from './colors';
 import { markerKind, type MarkerKind } from './dateKind';
-import { addDays, sameDay, startOfDay, startOfWeek, toISODate, parseISODate } from './time';
+import { addDays, startOfDay, startOfWeek, toISODate, parseISODate } from './time';
+import { occurrencesOn, type DayOccurrence } from './spans';
 import {
   CATEGORY_KIND,
   type ColorName,
@@ -186,24 +187,31 @@ export function buildSnapshot({
 }: SnapshotInput): Snapshot {
   const range = rangeFor(kind, anchor);
 
-  const inRange = events
-    .filter((e) => e.start < e.end && dayIndex(range, e.start) !== -1)
-    .filter((e) => includeFlexible || isFixedCategory(e.category))
-    .sort((a, b) => +a.start - +b.start);
+  const candidates = events.filter((e) => includeFlexible || isFixedCategory(e.category));
 
   const mk: SharedMarker[] = [];
   const density: number[] = new Array(range.days).fill(0);
+
+  /**
+   * Walked day by day rather than event by event.
+   *
+   * Filtering on the day an event *starts* silently loses the second and third
+   * days of anything spanning more than one, so a shared week would show a trip
+   * only on the Friday it began. Going day by day asks the same question the
+   * grid asks — what is on this day — and a moment, which occupies no time at
+   * all, survives it instead of being filtered out for having no duration.
+   */
+  const perDay: { index: number; occurrence: DayOccurrence }[] = [];
 
   for (let i = 0; i < range.days; i++) {
     const date = addDays(range.start, i);
     for (const marker of markersOn(markers, date)) {
       mk.push({ d: i, t: marker.title, k: markerKind(marker) });
     }
-  }
-
-  for (const event of inRange) {
-    const index = dayIndex(range, event.start);
-    if (index !== -1) density[index]++;
+    for (const occurrence of occurrencesOn(candidates, date)) {
+      perDay.push({ index: i, occurrence });
+      density[i]++;
+    }
   }
 
   const snapshot: Snapshot = {
@@ -225,13 +233,16 @@ export function buildSnapshot({
     return snapshot;
   }
 
-  snapshot.ev = inRange.map((event) => {
+  snapshot.ev = perDay.map(({ index, occurrence }) => {
+    const { event } = occurrence;
+    const start = minutesInto(event.start);
     const shared: SharedEvent = {
-      d: dayIndex(range, event.start),
-      s: minutesInto(event.start),
-      // An event running past midnight is clamped to the end of its own day
-      // rather than drawn backwards or spilling onto a day it is not on.
-      e: sameDay(event.start, event.end) ? minutesInto(event.end) : 24 * 60,
+      d: index,
+      s: start,
+      // A moment ends where it starts; that equality is what marks it as one on
+      // the way back in. Everything else is already clipped to this day, so a
+      // midnight end means the end of the day rather than the top of it.
+      e: occurrence.moment ? start : endMinutesOf(event),
       t: event.title.slice(0, MAX_TITLE),
       c: event.category,
       k: colorFor(event),
@@ -291,12 +302,16 @@ export function flexibleCountIn(
   events: ScheduleEvent[],
 ): number {
   const range = rangeFor(kind, anchor);
-  return events.filter(
-    (e) =>
-      e.start < e.end &&
-      dayIndex(range, e.start) !== -1 &&
-      !isFixedCategory(e.category),
-  ).length;
+  const optional = events.filter((e) => !isFixedCategory(e.category));
+
+  // Counted the same way they are collected, so the number on the switch
+  // matches what turning it off actually removes — including moments, which
+  // have no duration, and every day of a span rather than just its first.
+  let count = 0;
+  for (let i = 0; i < range.days; i++) {
+    count += occurrencesOn(optional, addDays(range.start, i)).length;
+  }
+  return count;
 }
 
 /* -------------------------------------------------------------- encoding -- */
@@ -476,7 +491,9 @@ function cleanEvent(raw: unknown, days: number): SharedEvent[] {
   const s = Number(value.s);
   const e = Number(value.e);
   if (!Number.isInteger(d) || d < 0 || d >= days) return [];
-  if (!Number.isFinite(s) || !Number.isFinite(e) || s < 0 || e > 1440 || e <= s) return [];
+  // e === s is a moment: a time with no end, which is a real shape rather than
+  // a corrupt range. Only a genuinely backwards one is dropped.
+  if (!Number.isFinite(s) || !Number.isFinite(e) || s < 0 || e > 1440 || e < s) return [];
 
   const category = typeof value.c === 'string' && CATEGORIES.has(value.c) ? value.c : 'class';
   const color = typeof value.k === 'string' && COLORS.has(value.k) ? value.k : 'blue';
@@ -530,4 +547,21 @@ export function payloadFromHash(hash: string): string | null {
   if (!hash.startsWith(SHARE_HASH)) return null;
   const payload = hash.slice(SHARE_HASH.length).trim();
   return payload.length > 0 ? payload : null;
+}
+
+/**
+ * Where an occurrence ends, in minutes into its own day.
+ *
+ * Already clipped to the day, so an end at midnight is the end of this day and
+ * not the start of the next one — which is what the raw minute count would
+ * otherwise say.
+ */
+function endMinutesOf(event: { start: Date; end: Date }): number {
+  // Seconds count here, unlike everywhere else: a clipped occurrence stops one
+  // second short of midnight so it positions correctly on a grid, and rounding
+  // that up restores the clean 24:00 the day actually ends at. Without the
+  // seconds it reads 23:59 and the poster draws a one-minute gap at midnight.
+  const end = event.end;
+  const minutes = end.getHours() * 60 + end.getMinutes() + end.getSeconds() / 60;
+  return Math.ceil(minutes);
 }

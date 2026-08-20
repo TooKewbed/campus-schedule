@@ -15,6 +15,7 @@ import {
   yForMinutes,
 } from '../lib/layout';
 import { colorFor } from '../lib/colors';
+import { describeSpan, dayNumberIn, spanDays, type DayOccurrence } from '../lib/spans';
 import { formatDuration, formatRange, formatTime, minutesIntoDay } from '../lib/time';
 
 /** A range drawn on the grid, before it has been named or committed. */
@@ -25,7 +26,12 @@ export interface DraftRange {
 }
 
 interface Props {
-  events: ScheduleEvent[];
+  /** Ordinary blocks, already clipped to this day. */
+  timed: DayOccurrence[];
+  /** Whole-day events and moments outside grid hours, drawn above the grid. */
+  banner: DayOccurrence[];
+  /** Times with no end, drawn on the grid as a marker rather than a block. */
+  moments: DayOccurrence[];
   conflicts: Conflict[];
   freeWindows: FreeWindow[];
   /** Only drawn when the viewed day is actually today. */
@@ -46,7 +52,9 @@ const SNAP_MINUTES = 15;
 const CLICK_DURATION = 60;
 
 export default function DayGrid({
-  events,
+  timed,
+  banner,
+  moments,
   conflicts,
   freeWindows,
   now,
@@ -57,8 +65,25 @@ export default function DayGrid({
   onRequestEdit,
 }: Props) {
   const conflicted = useMemo(() => conflictedEventIds(conflicts), [conflicts]);
-  const fixed = useMemo(() => layoutLane(events.filter(isFixed)), [events]);
-  const flexible = useMemo(() => layoutLane(events.filter(isFlexible)), [events]);
+  const fixed = useMemo(
+    () => layoutLane(timed.filter((o) => isFixed(o.event)).map((o) => o.event)),
+    [timed],
+  );
+  const flexible = useMemo(
+    () => layoutLane(timed.filter((o) => isFlexible(o.event)).map((o) => o.event)),
+    [timed],
+  );
+
+  /**
+   * From a positioned block back to the whole event it is a slice of.
+   *
+   * The layout only ever sees the clipped copy, but clicking a trip should open
+   * the trip and not the fragment of it that happens to fall on this day.
+   */
+  const occurrenceOf = useMemo(() => {
+    const map = new Map(timed.map((o) => [o.event.id, o]));
+    return (id: string) => map.get(id);
+  }, [timed]);
 
   const [draft, setDraft] = useState<DraftRange | null>(null);
   const dragRef = useRef<{ anchor: number; kind: EventKind; el: HTMLElement; moved: boolean } | null>(
@@ -204,6 +229,28 @@ export default function DayGrid({
           </button>
         </div>
 
+        {/* Above the grid, not on it. A week-long trip has no top and bottom
+            edge inside one day, and a 5:30am flight has no place on a grid
+            that starts at eight — drawing either as a block would mean
+            inventing a shape neither of them has. */}
+        {banner.length > 0 && (
+          <ul className="allday">
+            {banner.map((o) => (
+              <li key={o.event.id}>
+                <button
+                  className={`allday-item ${colorFor(o.event)}${o.moment ? ' is-moment' : ''}`}
+                  onClick={() => onRequestEdit(o.source)}
+                  title={bannerTitle(o)}
+                >
+                  <span className="allday-when">{bannerWhen(o)}</span>
+                  <span className="allday-title">{o.event.title}</span>
+                  {o.event.location && <span className="allday-where">{o.event.location}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="schedule" style={{ height: `${GRID_HEIGHT}px` }}>
           <div className="time-axis">
             {hours.map((h) => (
@@ -247,27 +294,55 @@ export default function DayGrid({
               </div>
             ))}
 
-            {fixed.map((p, i) => (
+            {fixed.map((p, i) => {
+              const o = occurrenceOf(p.event.id);
+              const whole = o?.source ?? p.event;
+              return (
+                <div
+                  key={p.event.id}
+                  className={`ev ${colorFor(p.event)}${
+                    conflicted.has(p.event.id) ? ' conflicting' : ''
+                  }${o?.continuesBefore ? ' from-before' : ''}${o?.continuesAfter ? ' into-after' : ''}`}
+                  style={{ ...blockStyle(p), '--i': i } as CSSProperties}
+                  title={blockTitle(o, p.event)}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onRequestEdit(whole)}
+                  onKeyDown={(e) => openOnKey(e, () => onRequestEdit(whole))}
+                >
+                  <div className="t">{p.event.title}</div>
+                  {p.height >= 44 && (
+                    <div className="m">
+                      {blockWhen(o, p.event)}
+                      {p.event.location ? ` · ${p.event.location}` : ''}
+                    </div>
+                  )}
+                  <DeleteButton event={whole} onRequestDelete={onRequestDelete} />
+                </div>
+              );
+            })}
+
+            {/* A moment is a line, not a box. It marks when something happens
+                without claiming any time either side of it, which is exactly
+                what "the flight leaves at 5:30" says and what a block with an
+                invented end time would not. */}
+            {moments.map((o) => (
               <div
-                key={p.event.id}
-                className={`ev ${colorFor(p.event)}${
-                  conflicted.has(p.event.id) ? ' conflicting' : ''
-                }`}
-                style={{ ...blockStyle(p), '--i': i } as CSSProperties}
-                title={`${p.event.title} · ${formatRange(p.event.start, p.event.end)}`}
+                key={o.event.id}
+                className={`ev-moment ${colorFor(o.event)}`}
+                style={{ top: `${yFor(o.event.start)}px` }}
                 role="button"
                 tabIndex={0}
-                onClick={() => onRequestEdit(p.event)}
-                onKeyDown={(e) => openOnKey(e, () => onRequestEdit(p.event))}
+                title={`${o.event.title} · ${formatTime(o.event.start)}`}
+                onClick={() => onRequestEdit(o.source)}
+                onKeyDown={(e) => openOnKey(e, () => onRequestEdit(o.source))}
               >
-                <div className="t">{p.event.title}</div>
-                {p.height >= 44 && (
-                  <div className="m">
-                    {formatRange(p.event.start, p.event.end)}
-                    {p.event.location ? ` · ${p.event.location}` : ''}
-                  </div>
-                )}
-                <DeleteButton event={p.event} onRequestDelete={onRequestDelete} />
+                <span className="ev-moment-knob" />
+                <span className="ev-moment-label">
+                  <b>{formatTime(o.event.start)}</b> {o.event.title}
+                  {o.event.location ? ` · ${o.event.location}` : ''}
+                </span>
+                <DeleteButton event={o.source} onRequestDelete={onRequestDelete} />
               </div>
             ))}
 
@@ -291,24 +366,30 @@ export default function DayGrid({
               />
             ))}
 
-            {flexible.map((p, i) => (
-              <div
-                key={p.event.id}
-                className={`ev-flex ${colorFor(p.event)}`}
-                style={{ ...blockStyle(p), '--i': i } as CSSProperties}
-                title={`${p.event.title} · ${formatRange(p.event.start, p.event.end)}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => onRequestEdit(p.event)}
-                onKeyDown={(e) => openOnKey(e, () => onRequestEdit(p.event))}
-              >
-                <div className="t">{p.event.title}</div>
-                {p.height >= 44 && (
-                  <div className="m">{formatRange(p.event.start, p.event.end)} · optional</div>
-                )}
-                <DeleteButton event={p.event} onRequestDelete={onRequestDelete} />
-              </div>
-            ))}
+            {flexible.map((p, i) => {
+              const o = occurrenceOf(p.event.id);
+              const whole = o?.source ?? p.event;
+              return (
+                <div
+                  key={p.event.id}
+                  className={`ev-flex ${colorFor(p.event)}${
+                    o?.continuesBefore ? ' from-before' : ''
+                  }${o?.continuesAfter ? ' into-after' : ''}`}
+                  style={{ ...blockStyle(p), '--i': i } as CSSProperties}
+                  title={blockTitle(o, p.event)}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onRequestEdit(whole)}
+                  onKeyDown={(e) => openOnKey(e, () => onRequestEdit(whole))}
+                >
+                  <div className="t">{p.event.title}</div>
+                  {p.height >= 44 && (
+                    <div className="m">{blockWhen(o, p.event)} · optional</div>
+                  )}
+                  <DeleteButton event={whole} onRequestDelete={onRequestDelete} />
+                </div>
+              );
+            })}
 
             {renderDraft('flexible')}
           </div>
@@ -366,6 +447,49 @@ function DeleteButton({
       </svg>
     </button>
   );
+}
+
+/* ---------------------------------------------------------------- labels -- */
+
+/**
+ * What a block says about its own time.
+ *
+ * A slice of a longer event must not claim the clipped times as its own: a trip
+ * that runs to Sunday morning should not read "6:00 PM – 12:00 AM" on Friday,
+ * which is a midnight ending nobody entered. Where it continues, the day it
+ * continues to is the useful fact instead.
+ */
+function blockWhen(o: DayOccurrence | undefined, clipped: ScheduleEvent): string {
+  if (!o || (!o.continuesBefore && !o.continuesAfter)) {
+    return formatRange(clipped.start, clipped.end);
+  }
+  if (o.continuesBefore && o.continuesAfter) return 'All day';
+  if (o.continuesAfter) return `From ${formatTime(o.source.start)}`;
+  return `Until ${formatTime(o.source.end)}`;
+}
+
+function blockTitle(o: DayOccurrence | undefined, clipped: ScheduleEvent): string {
+  if (!o || (!o.continuesBefore && !o.continuesAfter)) {
+    return `${clipped.title} · ${formatRange(clipped.start, clipped.end)}`;
+  }
+  const day = dayNumberIn(o.source, clipped.start);
+  return `${o.source.title} · ${describeSpan(o.source)} · day ${day} of ${spanDays(o.source)}`;
+}
+
+/** The line a banner leads with: a date range, or the time of a moment. */
+function bannerWhen(o: DayOccurrence): string {
+  if (o.moment) return formatTime(o.event.start);
+  return o.continuesBefore || o.continuesAfter ? describeSpan(o.source) : 'All day';
+}
+
+function bannerTitle(o: DayOccurrence): string {
+  if (o.moment) return `${o.event.title} · ${formatTime(o.event.start)}`;
+  const total = spanDays(o.source);
+  if (total <= 1) return `${o.event.title} · all day`;
+  return `${o.source.title} · ${describeSpan(o.source)} · day ${dayNumberIn(
+    o.source,
+    o.event.start,
+  )} of ${total}`;
 }
 
 /** Enter or Space opens the editor, matching the button role on the block. */

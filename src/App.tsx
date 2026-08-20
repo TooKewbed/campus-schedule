@@ -10,7 +10,9 @@ import { findFreeWindows } from './lib/freeTime';
 import { GRID } from './lib/layout';
 import {
   applyValues,
+  createMoment,
   createSingleCommitment,
+  createSpan,
   expandManualSeries,
   seriesEndDate,
   singleCommitments,
@@ -19,6 +21,7 @@ import {
   type ManualSeriesInput,
 } from './lib/manualEvents';
 import { addDays, formatDayHeading, sameDay, startOfDay, startOfWeek } from './lib/time';
+import { eventsOf, occurrencesOn, splitDay } from './lib/spans';
 import { normalizeDays, sameDays } from './lib/weekdays';
 import {
   loadEvents,
@@ -186,6 +189,24 @@ export default function App() {
       // every new one has to be remembered in a second place, and the colour
       // was already being dropped that way.
       setEvents((prev) => [...prev, createSingleCommitment(input, date)]);
+    },
+    [],
+  );
+
+  /** A time with no end — a departure, a deadline you have to be somewhere for. */
+  const addMoment = useCallback(
+    (input: Omit<ManualSeriesInput, 'weekdays' | 'endMinutes'>, date: Date) => {
+      snapshotRef.current(`adding ${input.title.trim()}`);
+      setEvents((prev) => [...prev, createMoment(input, date)]);
+    },
+    [],
+  );
+
+  /** One commitment running from one day to another. */
+  const addSpan = useCallback(
+    (input: Omit<ManualSeriesInput, 'weekdays'>, from: Date, to: Date, allDay: boolean) => {
+      snapshotRef.current(`adding ${input.title.trim()}`);
+      setEvents((prev) => [...prev, createSpan(input, from, to, allDay)]);
     },
     [],
   );
@@ -470,10 +491,22 @@ export default function App() {
     setNotes((prev) => prev.filter((note) => note.id !== id));
   }, []);
 
-  const dayEvents = useMemo(
-    () => events.filter((e) => sameDay(e.start, selected)),
-    [events, selected],
-  );
+  /**
+   * What is on the selected day, and how each part of it draws.
+   *
+   * Not `events.filter(sameDay(e.start))` any more: that asks which day an
+   * event *started* on, which silently loses the second and third days of
+   * anything spanning more than one. Occurrences are clipped to the day, so a
+   * trip's middle day is a whole-day band here and its first day ends at
+   * midnight, without either being stored that way.
+   */
+  const dayOccurrences = useMemo(() => occurrencesOn(events, selected), [events, selected]);
+  const daySplit = useMemo(() => splitDay(dayOccurrences), [dayOccurrences]);
+
+  // Only the ordinary blocks reach the grid, the conflict check and the
+  // free-time maths. A moment occupies no time and a whole-day band is
+  // context rather than a commitment; neither should eat the day's free hours.
+  const dayEvents = useMemo(() => eventsOf(daySplit.timed), [daySplit]);
 
   const conflicts = useMemo(() => detectConflicts(dayEvents), [dayEvents]);
 
@@ -566,7 +599,7 @@ export default function App() {
           <h1>{formatDayHeading(selected)}</h1>
           <p className="sub">
             {isToday ? 'Today' : relativeLabel(selected, today)}
-            {events.length > 0 && ` · ${dayEvents.length} scheduled`}
+            {events.length > 0 && ` · ${dayOccurrences.length} scheduled`}
           </p>
         </div>
         <div className="toolbar-actions">
@@ -655,7 +688,9 @@ export default function App() {
           {view === 'day' ? (
             <DayGrid
               key={+selected}
-              events={dayEvents}
+              timed={daySplit.timed}
+              banner={daySplit.banner}
+              moments={daySplit.moments}
               conflicts={conflicts}
               freeWindows={freeWindows}
               now={isToday ? now : null}
@@ -698,6 +733,8 @@ export default function App() {
             defaultOpen={events.length === 0}
             onAdd={addSeries}
             onAddOnce={addSingle}
+            onAddMoment={addMoment}
+            onAddSpan={addSpan}
           />
 
           <ImportantDates

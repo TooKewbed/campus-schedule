@@ -161,6 +161,97 @@ export function createSingleCommitment(
   };
 }
 
+/**
+ * A moment: a time with no end.
+ *
+ * `end` is set equal to `start` rather than left out. An event that occupies
+ * no time is exactly what a departure is, and expressing it that way means
+ * conflict detection and the free-time maths — both of which already require
+ * end > start — ignore it without being taught anything new.
+ */
+export function createMoment(
+  input: Omit<ManualSeriesInput, 'weekdays' | 'endMinutes'>,
+  date: Date,
+): ScheduleEvent {
+  const title = input.title.trim();
+  const at = atMinutes(date, input.startMinutes);
+
+  return {
+    id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    start: at,
+    end: new Date(at),
+    category: input.category,
+    location: input.location?.trim() || undefined,
+    courseCode: extractCourseCode(title),
+    color: input.color,
+    source: 'manual',
+    recurring: false,
+  };
+}
+
+/**
+ * One commitment running across several days.
+ *
+ * With no times it covers whole days, midnight to midnight, which is what a
+ * trip or a break actually is. Given times, the first and last days are
+ * partial and every day between them is whole — so a flight out on Friday
+ * evening and back on Sunday morning draws correctly on all three days
+ * without three separate records to keep in step.
+ */
+export function createSpan(
+  input: Omit<ManualSeriesInput, 'weekdays'>,
+  from: Date,
+  to: Date,
+  allDay: boolean,
+): ScheduleEvent {
+  const title = input.title.trim();
+  const first = startOfDay(from);
+  const last = startOfDay(to);
+
+  // The end is exclusive, so a span through the 22nd ends at midnight starting
+  // the 23rd. Anything else leaves the last day a minute short of covered.
+  const start = allDay ? first : atMinutes(first, input.startMinutes);
+  const end = allDay ? addDays(last, 1) : atMinutes(last, input.endMinutes);
+
+  return {
+    id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    start,
+    end,
+    category: input.category,
+    location: input.location?.trim() || undefined,
+    courseCode: extractCourseCode(title),
+    color: input.color,
+    source: 'manual',
+    recurring: false,
+  };
+}
+
+/** A span needs its two dates the right way round; times may be equal. */
+export function validateSpan(
+  input: Omit<ManualSeriesInput, 'weekdays'>,
+  from: Date,
+  to: Date,
+  allDay: boolean,
+): string | null {
+  if (!input.title.trim()) return 'Give it a name.';
+  if (startOfDay(to) < startOfDay(from)) return 'The last day cannot be before the first.';
+  if (startOfDay(to).getTime() === startOfDay(from).getTime()) {
+    return 'Pick a later day, or use “Just once” for a single day.';
+  }
+  // Across different days the end time may legitimately be earlier in the day
+  // than the start: leave Friday at 6pm, return Sunday at 9am.
+  return allDay ? null : null;
+}
+
+/** A moment needs a name and a time, and nothing else. */
+export function validateMoment(
+  input: Omit<ManualSeriesInput, 'weekdays' | 'endMinutes'>,
+): string | null {
+  return input.title.trim() ? null : 'Give it a name.';
+}
+
 /** Fields an existing commitment can be edited to. */
 export interface CommitmentValues {
   title: string;
@@ -170,6 +261,12 @@ export interface CommitmentValues {
   endMinutes: number;
   /** null is an explicit choice of "automatic", distinct from not asked. */
   color: ColorName | null;
+  /** A time with no end. When set, endMinutes is ignored. */
+  moment?: boolean;
+  /** Last day, when this runs across several. Absent keeps it on one day. */
+  lastDay?: Date | null;
+  /** Whole days rather than times, only meaningful alongside lastDay. */
+  allDay?: boolean;
 }
 
 /**
@@ -181,6 +278,7 @@ export interface CommitmentValues {
 export function applyValues(event: ScheduleEvent, values: CommitmentValues): ScheduleEvent {
   const title = values.title.trim();
   const day = startOfDay(event.start);
+  const start = values.allDay && values.lastDay ? day : atMinutes(day, values.startMinutes);
 
   return {
     ...event,
@@ -189,9 +287,30 @@ export function applyValues(event: ScheduleEvent, values: CommitmentValues): Sch
     location: values.location.trim() || undefined,
     courseCode: extractCourseCode(title),
     color: values.color ?? undefined,
-    start: atMinutes(day, values.startMinutes),
-    end: atMinutes(day, values.endMinutes),
+    start,
+    end: endFor(values, day, start),
   };
+}
+
+/**
+ * Where an edited commitment ends.
+ *
+ * Three shapes share one form, so the end is derived from which of them the
+ * values describe rather than from a field that could contradict the others.
+ * Order matters: a moment has no end even if a last day was left over in the
+ * form from before it was made one.
+ */
+function endFor(values: CommitmentValues, day: Date, start: Date): Date {
+  if (values.moment) return new Date(start);
+
+  if (values.lastDay) {
+    const last = startOfDay(values.lastDay);
+    // Exclusive, so a whole-day span through the 22nd ends at midnight opening
+    // the 23rd — one minute less and the last day is not covered.
+    return values.allDay ? addDays(last, 1) : atMinutes(last, values.endMinutes);
+  }
+
+  return atMinutes(day, values.endMinutes);
 }
 
 /** Minutes since midnight for an existing event, for seeding the edit form. */

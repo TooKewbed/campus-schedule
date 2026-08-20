@@ -7,6 +7,7 @@ import {
   type ScheduleEvent,
 } from '../types/event';
 import { automaticColorFor } from '../lib/colors';
+import { describeSpan, isMoment, isSpan } from '../lib/spans';
 import { extractCourseCode } from '../lib/categorize';
 import {
   countOccurrences,
@@ -93,6 +94,18 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   const [problem, setProblem] = useState<string | null>(null);
 
   /**
+   * Which of the three shapes is being edited.
+   *
+   * Derived from the event when the dialog opens rather than stored on it: an
+   * event with no duration is a moment and one ending on a later date is a
+   * span, so the form reads the same definition the grid does instead of a
+   * second flag that could disagree with it.
+   */
+  const [shape, setShape] = useState<Shape>("block");
+  const [lastDay, setLastDay] = useState("");
+  const [spanAllDay, setSpanAllDay] = useState(false);
+
+  /**
    * A stable identity for "which thing is this dialog open on".
    *
    * The `target` prop is rebuilt as a fresh object on every parent render — and
@@ -127,7 +140,11 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
         // Seed with the day you drew on; add others from there.
         setWeekdays([date.getDay()]);
         setUntil(toISODate(addDays(date, DEFAULT_TERM_DAYS)));
-        setEndMode('date');
+        setEndMode("date");
+        // Dragging on the grid always draws an ordinary block.
+        setShape("block");
+        setLastDay("");
+        setSpanAllDay(false);
       } else {
         const e = target.event;
         setTitle(e.title);
@@ -141,7 +158,14 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
           target.seriesWeekdays.length > 0 ? target.seriesWeekdays : [e.start.getDay()],
         );
         setUntil(toISODate(target.seriesUntil ?? addDays(e.start, DEFAULT_TERM_DAYS)));
-        setEndMode('date');
+        setEndMode("date");
+
+        const moment = isMoment(e);
+        const span = isSpan(e);
+        setShape(moment ? "moment" : span ? "span" : "block");
+        setLastDay(span ? toISODate(lastDayOf(e)) : "");
+        // Whole days show as midnight to midnight; anything else has real times.
+        setSpanAllDay(span && minutesOfDate(e.start) === 0 && minutesOfDate(e.end) === 0);
       }
 
       if (!dialog.open) dialog.showModal();
@@ -194,9 +218,21 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
       setProblem('Give it a name.');
       return;
     }
-    if (duration <= 0) {
+    // A moment has no end to be after the start, and a span's end is on a
+    // different day — out Friday at 6pm and back Sunday at 9am is not backwards.
+    if (shape === 'block' && duration <= 0) {
       setProblem('The end time must be after the start time.');
       return;
+    }
+    if (shape === 'span') {
+      if (!lastDay) {
+        setProblem('Pick the last day.');
+        return;
+      }
+      if (shown?.mode === 'edit' && parseISODate(lastDay) < startOfDay(shown.event.start)) {
+        setProblem('The last day cannot be before the first.');
+        return;
+      }
     }
 
     const repeating = editing ? recurring && scope === 'all' : repeats;
@@ -218,7 +254,17 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
     // null means "no end date" — the expansion then runs to the window's edge.
     const endsAt = endsOnDate ? untilDate : null;
 
-    const values: CommitmentValues = { title, category, location, startMinutes, endMinutes, color };
+    const values: CommitmentValues = {
+      title,
+      category,
+      location,
+      startMinutes,
+      endMinutes,
+      color,
+      moment: shape === "moment",
+      lastDay: shape === "span" && lastDay ? parseISODate(lastDay) : null,
+      allDay: spanAllDay,
+    };
     if (shown?.mode === 'edit') {
       onEdit(shown.event, values, recurring ? scope : 'one', weekdays, endsAt);
     } else {
@@ -229,10 +275,29 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   return (
     <dialog ref={ref} className="confirm sheet" onClose={onDismiss}>
       <div className="confirm-inner">
-        <h2>{editing ? 'Edit commitment' : 'New commitment'}</h2>
+        <h2>
+          {editing ? 'Edit ' : 'New '}
+          {shape === 'moment' ? 'time' : shape === 'span' ? 'multi-day event' : 'commitment'}
+        </h2>
         <p className="confirm-when">
-          {weekday} · {toTimeInput(startMinutes)}–{toTimeInput(endMinutes)}
-          {duration > 0 ? ` · ${formatDuration(duration)}` : ''}
+          {/* A moment has one time and a span has two dates; showing either as
+              a start–end pair on one weekday would be describing something
+              other than what is being edited. */}
+          {shape === 'moment' ? (
+            <>
+              {weekday} · {toTimeInput(startMinutes)}
+            </>
+          ) : shape === 'span' ? (
+            <>
+              {shown?.mode === 'edit' ? describeSpan(shown.event) : weekday}
+              {spanAllDay ? ' · all day' : ''}
+            </>
+          ) : (
+            <>
+              {weekday} · {toTimeInput(startMinutes)}–{toTimeInput(endMinutes)}
+              {duration > 0 ? ` · ${formatDuration(duration)}` : ''}
+            </>
+          )}
         </p>
 
         <div className="manual-form sheet-form">
@@ -297,17 +362,38 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
             />
           </label>
 
-          <label className="field">
-            <span className="field-label">Ends</span>
-            <input
-              type="time"
-              value={end}
-              onChange={(e) => {
-                setEnd(e.target.value);
-                setProblem(null);
-              }}
-            />
-          </label>
+          {/* A moment has no end, so the field is gone rather than disabled:
+              a greyed-out time still shows a value that is not real. */}
+          {shape !== 'moment' && (
+            <label className="field">
+              <span className="field-label">{shape === 'span' ? 'Ends (last day)' : 'Ends'}</span>
+              <input
+                type="time"
+                value={end}
+                onChange={(e) => {
+                  setEnd(e.target.value);
+                  setProblem(null);
+                }}
+              />
+            </label>
+          )}
+
+          {shape === 'span' && (
+            <label className="field field-wide">
+              <span className="field-label">Last day</span>
+              <input
+                type="date"
+                value={lastDay}
+                onChange={(e) => {
+                  setLastDay(e.target.value);
+                  setProblem(null);
+                }}
+              />
+              <span className="field-hint">
+                {spanAllDay ? 'Whole days, end to end' : 'Runs from the first day to this one'}
+              </span>
+            </label>
+          )}
         </div>
 
         {!editing && (
@@ -449,3 +535,19 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   );
 }
 
+
+/** The three shapes the editor can be showing. */
+type Shape = "block" | "moment" | "span";
+
+/**
+ * The last day a span is actually on.
+ *
+ * An event ending at exactly midnight ends at the *start* of that day, so the
+ * day before it is the last one it covers — the same rule the grid uses when
+ * deciding which days to draw a band on.
+ */
+function lastDayOf(event: { start: Date; end: Date }): Date {
+  const end = event.end;
+  const midnight = startOfDay(end).getTime();
+  return end.getTime() === midnight ? new Date(midnight - 1) : end;
+}

@@ -11,6 +11,7 @@ import {
   yFor,
 } from '../lib/layout';
 import { colorFor } from '../lib/colors';
+import { describeSpan, eventsOf, occurrencesOn, splitDay, type DayOccurrence } from '../lib/spans';
 import { addDays, formatRange, formatTime, minutesIntoDay, sameDay } from '../lib/time';
 import { WEEKDAYS } from '../lib/weekdays';
 import type { DayMarker } from '../types/dayMarker';
@@ -60,18 +61,26 @@ export default function WeekGrid({
   const days = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const date = addDays(weekStart, i);
-      const dayEvents = events.filter((e) => sameDay(e.start, date));
+      // Occurrences, not `sameDay(e.start)`: asking which day an event started
+      // on loses every day of a trip except the first.
+      const split = splitDay(occurrencesOn(events, date));
+      const dayEvents = eventsOf(split.timed);
       return {
         date,
+        split,
         // One lane, so an overlap between a class and an office hour still
         // reads as an overlap rather than two blocks in separate columns.
         positioned: layoutLane(dayEvents),
+        occurrenceOf: byId(split.timed),
         conflicted: conflictedEventIds(detectConflicts(dayEvents)),
         markers: markersOn(date),
-        count: dayEvents.filter(isFixed).length,
+        count: dayEvents.filter(isFixed).length + split.banner.length + split.moments.length,
       };
     });
   }, [events, weekStart, markersOn]);
+
+  /** Whether any day this week has a band, so the row is only there when used. */
+  const hasBanner = days.some((d) => d.split.banner.length > 0);
 
   const hours: number[] = [];
   for (let h = GRID.startHour; h <= GRID.endHour; h++) hours.push(h);
@@ -123,6 +132,33 @@ export default function WeekGrid({
             })}
           </div>
 
+          {/* One row under the day headers for everything that has no place on
+              the grid: whole days of a trip, and moments outside grid hours.
+              Only drawn when the week actually has some. */}
+          {hasBanner && (
+            <div className="wg-allday">
+              <div className="wg-gutter wg-allday-label">All day</div>
+              {days.map(({ date, split }) => (
+                <div key={+date} className="wg-allday-col">
+                  {split.banner.map((o) => (
+                    <button
+                      key={o.event.id}
+                      className={`wg-band ${colorFor(o.event)}${o.moment ? ' is-moment' : ''}`}
+                      onClick={() => onRequestEdit(o.source)}
+                      title={
+                        o.moment
+                          ? `${o.event.title} · ${formatTime(o.event.start)}`
+                          : `${o.source.title} · ${describeSpan(o.source)}`
+                      }
+                    >
+                      {o.moment && <b>{formatTime(o.event.start)}</b>} {o.event.title}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="wg-body" style={{ height: `${GRID_HEIGHT}px` }}>
             <div className="wg-gutter">
               {hours.map((h) => (
@@ -136,7 +172,7 @@ export default function WeekGrid({
               ))}
             </div>
 
-            {days.map(({ date, positioned, conflicted }) => {
+            {days.map(({ date, positioned, conflicted, occurrenceOf, split }) => {
               const isToday = sameDay(date, today);
               const classes = ['wg-col'];
               if (sameDay(date, selected)) classes.push('selected');
@@ -152,26 +188,57 @@ export default function WeekGrid({
                     />
                   ))}
 
+                  {/* Moments first, so a block drawn afterwards sits above the
+                      line rather than under it. */}
+                  {split.moments.map((o) => (
+                    <div
+                      key={o.event.id}
+                      className={`wg-moment ${colorFor(o.event)}`}
+                      style={{ top: `${yFor(o.event.start)}px` }}
+                      role="button"
+                      tabIndex={0}
+                      title={`${o.event.title} · ${formatTime(o.event.start)}`}
+                      onClick={() => onRequestEdit(o.source)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onRequestEdit(o.source);
+                        }
+                      }}
+                    >
+                      <span className="wg-moment-knob" />
+                      <span className="wg-moment-label">{o.event.title}</span>
+                    </div>
+                  ))}
+
                   {positioned.map((p, i) => {
                     const flexible = !isFixed(p.event);
+                    const o = occurrenceOf(p.event.id);
+                    const whole = o?.source ?? p.event;
                     const classes = [flexible ? 'ev-flex' : 'ev', 'compact', colorFor(p.event)];
                     if (!flexible && conflicted.has(p.event.id)) classes.push('conflicting');
+                    if (o?.continuesBefore) classes.push('from-before');
+                    if (o?.continuesAfter) classes.push('into-after');
 
                     return (
                       <div
                         key={p.event.id}
                         className={classes.join(' ')}
                         style={{ ...blockStyle(p), '--i': i } as CSSProperties}
-                        title={`${p.event.title} · ${formatRange(p.event.start, p.event.end)}${
-                          p.event.location ? ` · ${p.event.location}` : ''
-                        }`}
+                        title={
+                          o && (o.continuesBefore || o.continuesAfter)
+                            ? `${o.source.title} · ${describeSpan(o.source)}`
+                            : `${p.event.title} · ${formatRange(p.event.start, p.event.end)}${
+                                p.event.location ? ` · ${p.event.location}` : ''
+                              }`
+                        }
                         role="button"
                         tabIndex={0}
-                        onClick={() => onRequestEdit(p.event)}
+                        onClick={() => onRequestEdit(whole)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            onRequestEdit(p.event);
+                            onRequestEdit(whole);
                           }
                         }}
                       >
@@ -210,4 +277,10 @@ function formatHour(hour: number): string {
   if (hour === 12) return 'Noon';
   const h = hour % 12 === 0 ? 12 : hour % 12;
   return `${h} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+/** Index one day’s occurrences so a positioned block can find its whole event. */
+function byId(list: DayOccurrence[]): (id: string) => DayOccurrence | undefined {
+  const map = new Map(list.map((o) => [o.event.id, o]));
+  return (id) => map.get(id);
 }

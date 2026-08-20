@@ -370,13 +370,47 @@ function drawDay(nodes: Node[], snapshot: Snapshot, box: Box): void {
   }
 
   const gap = 5;
-  for (const { event, column, columns } of packDay(snapshot.ev)) {
+  // A moment occupies no time, so it is neither packed into a column nor given
+  // a minimum height — a 26px box would claim half an hour it does not have.
+  for (const { event, column, columns } of packDay(snapshot.ev.filter(hasDuration))) {
     const width = (lane.w - gap * (columns - 1)) / columns;
     const x = lane.x + column * (width + gap);
     const y = yAt(event.s);
     const h = Math.max(26, yAt(event.e) - y);
     drawBlock(nodes, event, { x, y, w: width, h });
   }
+
+  for (const event of snapshot.ev.filter((e) => !hasDuration(e))) {
+    drawMoment(nodes, event, lane.x, lane.w, yAt(event.s));
+  }
+}
+
+/** A time with no end: shared as `e === s`, drawn as a line rather than a box. */
+function hasDuration(event: SharedEvent): boolean {
+  return event.e > event.s;
+}
+
+function drawMoment(nodes: Node[], event: SharedEvent, x: number, w: number, y: number): void {
+  const ink = TEXT_COLOR[event.k];
+  const label = `${clockLabel(event.s)}  ${event.t}`;
+
+  // Dotted, because a solid rule across the lane would read as a boundary
+  // between two things rather than a marker on one.
+  nodes.push({ k: 'line', x1: x, y1: y, x2: x + w, y2: y, stroke: ink, sw: 1.2, dash: '3 3' });
+  nodes.push({ k: 'circle', cx: x + 4, cy: y, r: 3.5, fill: ink });
+
+  const text = truncate(label, w - 20, 10, 600);
+  const textW = estimateWidth(text, 10, 600) + 10;
+  nodes.push({ k: 'rect', x: x + 11, y: y - 8, w: textW, h: 16, r: 5, fill: INK.bg });
+  nodes.push({
+    k: 'text',
+    x: x + 16,
+    y: y + 3.5,
+    s: text,
+    size: 10,
+    weight: 600,
+    fill: ink,
+  });
 }
 
 /** One event, as it appears on a day or week timeline. */
@@ -592,7 +626,7 @@ function drawWeek(nodes: Node[], snapshot: Snapshot, range: DateRange, box: Box)
     const laneW = colW - 6;
     const gap = 3;
 
-    for (const { event, column, columns } of packDay(events)) {
+    for (const { event, column, columns } of packDay(events.filter(hasDuration))) {
       const width = (laneW - gap * (columns - 1)) / columns;
       const y = yAt(event.s);
       const h = Math.max(20, yAt(event.e) - y);
@@ -601,6 +635,43 @@ function drawWeek(nodes: Node[], snapshot: Snapshot, range: DateRange, box: Box)
         y,
         w: width,
         h,
+      });
+    }
+
+    // A column this narrow has no room for a time beside the name, so the
+    // marker carries the title only — the same trade the week view makes.
+    for (const event of events.filter((e) => !hasDuration(e))) {
+      const y = yAt(event.s);
+      const ink = TEXT_COLOR[event.k];
+      nodes.push({
+        k: 'line',
+        x1: laneX,
+        y1: y,
+        x2: laneX + laneW,
+        y2: y,
+        stroke: ink,
+        sw: 1.1,
+        dash: '2.5 2.5',
+      });
+      nodes.push({ k: 'circle', cx: laneX + 3, cy: y, r: 2.6, fill: ink });
+      const label = truncate(event.t, laneW - 14, 8.5, 650);
+      nodes.push({
+        k: 'rect',
+        x: laneX + 8,
+        y: y - 6,
+        w: estimateWidth(label, 8.5, 650) + 6,
+        h: 12,
+        r: 4,
+        fill: INK.bg,
+      });
+      nodes.push({
+        k: 'text',
+        x: laneX + 11,
+        y: y + 2.5,
+        s: label,
+        size: 8.5,
+        weight: 650,
+        fill: ink,
       });
     }
   }
