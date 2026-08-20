@@ -166,3 +166,30 @@ export function loadReminders(): StoredReminders {
     return { enabled: false, sent: [] };
   }
 }
+
+/* ------------------------------------------------------------------ view -- */
+
+const VIEW_KEY = 'campus-schedule:view:v1';
+
+export function saveScheduleView(view: 'day' | 'week'): void {
+  try {
+    localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Day unless the last choice was week.
+ *
+ * Persisted because it is a preference about how someone reads their schedule,
+ * not a transient bit of navigation — being dropped back into day view on every
+ * reload would make the toggle feel like it had not worked.
+ */
+export function loadScheduleView(): 'day' | 'week' {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'day';
+  } catch {
+    return 'day';
+  }
+}

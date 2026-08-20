@@ -2754,3 +2754,145 @@ dialog.confirm.share {
 /* ---- what is due on the day being viewed ---- */
 
 .due-today { margin-top: -6px; }
+
+/* ==================================================== the week at a glance == */
+
+.week-grid {
+  background: var(--bg-card);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-card);
+  padding: 0 0 14px;
+  overflow: hidden;
+}
+
+/* Seven columns across a phone is about fifty pixels each — narrower than the
+   shortest course code — so below the minimum the grid scrolls sideways rather
+   than compressing into something unreadable. */
+.wg-scroll { overflow-x: auto; overflow-y: hidden; }
+.wg-inner { min-width: 660px; }
+
+/* Not sticky. It sits inside a horizontal scroll container, which becomes the
+   containing block for stickiness, so `top` would pin it to a scrollport that
+   never scrolls vertically — while the page scroll slid it under the toolbar.
+   The day view's lane headers do not stick either, and the grid is only about
+   eight hundred pixels tall. */
+.wg-head {
+  display: grid;
+  grid-template-columns: 54px repeat(7, minmax(0, 1fr));
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--separator);
+}
+
+.wg-corner { border-right: 1px solid var(--separator); }
+
+.wg-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 10px 4px 8px;
+  border: none;
+  border-right: 1px solid var(--separator);
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  transition: background-color var(--dur-press) var(--ease-out);
+}
+.wg-day:last-child { border-right: none; }
+@media (hover: hover) and (pointer: fine) {
+  .wg-day:hover { background: var(--fill-tertiary); }
+}
+.wg-day:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+
+.wg-dow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--label-tertiary);
+}
+.wg-dom {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Today is named in colour; the selected day is named by its surface. Two
+   different facts, so they must not share one signal. */
+.wg-day.today .wg-dow,
+.wg-day.today .wg-dom { color: var(--red); }
+.wg-day.selected { background: var(--fill-tertiary); }
+
+.wg-marks { display: flex; align-items: center; gap: 4px; height: 8px; }
+.wg-count {
+  font-size: 10px;
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.wg-marks .marker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--indigo); }
+.wg-marks .marker-dot.kind-exam       { background: var(--red); }
+.wg-marks .marker-dot.kind-quiz       { background: var(--orange); }
+.wg-marks .marker-dot.kind-assignment { background: var(--blue); }
+.wg-marks .marker-dot.kind-project    { background: var(--purple); }
+.wg-marks .marker-dot.kind-break      { background: var(--green); }
+.wg-marks .marker-dot.kind-holiday    { background: var(--indigo); }
+.wg-marks .marker-dot.kind-other      { background: var(--pink); }
+
+/* The margins leave room for the first and last hour labels, which sit a few
+   pixels above their own gridline and would otherwise be clipped by the
+   horizontal scroll container. Margins rather than padding: the height is set
+   inline from GRID_HEIGHT, and padding would eat into it under border-box,
+   putting every block a few pixels out of step with its hour line. */
+.wg-body {
+  display: grid;
+  grid-template-columns: 54px repeat(7, minmax(0, 1fr));
+  position: relative;
+  margin: 8px 0 10px;
+}
+
+.wg-gutter { position: relative; border-right: 1px solid var(--separator); }
+.wg-hour {
+  position: absolute;
+  right: 8px;
+  /* The same nudge the day view's time axis uses, so the two read alike. */
+  transform: translateY(-6px);
+  font-size: 10px;
+  letter-spacing: 0;
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wg-col { position: relative; border-right: 1px solid var(--separator); padding: 0 3px; }
+.wg-col:last-child { border-right: none; }
+.wg-col.weekend { background: color-mix(in srgb, var(--fill-tertiary) 45%, transparent); }
+.wg-col.selected { background: color-mix(in srgb, var(--blue) 5%, transparent); }
+
+/* Blocks reuse .ev / .ev-flex for their colours; only the type tightens. */
+.ev.compact, .ev-flex.compact { padding: 3px 6px; border-radius: 5px; }
+.ev.compact .t, .ev-flex.compact .t {
+  font-size: 10.5px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+.ev.compact .m, .ev-flex.compact .m { font-size: 9.5px; margin-top: 0; }
+.ev.compact { border-left-width: 2.5px; }
+
+/* No delete affordance in the week: the blocks are too small to hit reliably
+   and the day view is one click away through any column header. */
+.wg-col .ev-delete { display: none; }
+
+/* The line belongs to one column, so it does not need to shout its time as
+   well — the day column it sits in already says which day is now. */
+.now-line.week .lbl { display: none; }
+
+.wg-hint {
+  margin: 12px 18px 0;
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--label-tertiary);
+}
+
+@media (max-width: 560px) {
+  .wg-hint { margin: 10px 14px 0; }
+}

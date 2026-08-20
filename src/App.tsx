@@ -21,10 +21,12 @@ import { normalizeDays, sameDays } from './lib/weekdays';
 import {
   loadEvents,
   loadMarkers,
+  loadScheduleView,
   loadShowHolidays,
   loadTasks,
   saveEvents,
   saveMarkers,
+  saveScheduleView,
   saveShowHolidays,
   saveTasks,
 } from './lib/storage';
@@ -46,7 +48,8 @@ import SignIn from './components/SignIn';
 import StatTiles from './components/StatTiles';
 import SyncStatus from './components/SyncStatus';
 import TaskList from './components/TaskList';
-import WeekStrip from './components/WeekStrip';
+import WeekStrip, { type ScheduleView } from './components/WeekStrip';
+import WeekGrid from './components/WeekGrid';
 import { useSync } from './hooks/useSync';
 import { useReminders } from './hooks/useReminders';
 import { coursesFrom, dueOn } from './lib/courses';
@@ -94,6 +97,7 @@ export default function App() {
   const [pendingCreate, setPendingCreate] = useState<DraftRange | null>(null);
   const [pendingEdit, setPendingEdit] = useState<ScheduleEvent | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [view, setView] = useState<ScheduleView>(() => loadScheduleView());
 
   // Mirrors the four persisted collections to the account when signed in, and
   // pulls them back down on a new device. Local state stays authoritative for
@@ -130,6 +134,10 @@ export default function App() {
   useEffect(() => {
     saveShowHolidays(showHolidays);
   }, [showHolidays]);
+
+  useEffect(() => {
+    saveScheduleView(view);
+  }, [view]);
 
   // "system" leaves the attribute off entirely so prefers-color-scheme decides.
   useEffect(() => {
@@ -530,20 +538,40 @@ export default function App() {
             onSelect={setSelected}
             onShiftWeek={(delta) => setSelected((d) => addDays(d, delta * 7))}
             markersOn={markersForDate}
+            view={view}
+            onViewChange={setView}
           />
 
-          <DayGrid
-            key={+selected}
-            events={dayEvents}
-            conflicts={conflicts}
-            freeWindows={freeWindows}
-            now={isToday ? now : null}
-            onRequestDelete={setPendingDelete}
-            undoLabel={undoLabel}
-            onUndo={undo}
-            onRequestCreate={setPendingCreate}
-            onRequestEdit={setPendingEdit}
-          />
+          {view === 'day' ? (
+            <DayGrid
+              key={+selected}
+              events={dayEvents}
+              conflicts={conflicts}
+              freeWindows={freeWindows}
+              now={isToday ? now : null}
+              onRequestDelete={setPendingDelete}
+              undoLabel={undoLabel}
+              onUndo={undo}
+              onRequestCreate={setPendingCreate}
+              onRequestEdit={setPendingEdit}
+            />
+          ) : (
+            <WeekGrid
+              events={events}
+              weekStart={startOfWeek(selected)}
+              selected={selected}
+              today={today}
+              now={now}
+              // Opening a day from the week is a zoom, not just a selection —
+              // it is the only way back to the surface you can draw on.
+              onZoomDay={(date) => {
+                setSelected(date);
+                setView('day');
+              }}
+              onRequestEdit={setPendingEdit}
+              markersOn={markersForDate}
+            />
+          )}
 
           <CommitmentList
             series={manualSeries}

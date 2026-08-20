@@ -3,8 +3,16 @@ import { isFixed, type ScheduleEvent } from '../types/event';
 import { detectConflicts } from '../lib/conflicts';
 import { addDays, parseISODate, sameDay, startOfWeek, toISODate } from '../lib/time';
 import DatePicker from './DatePicker';
+import SegmentedControl from './SegmentedControl';
 import type { DayMarker } from '../types/dayMarker';
 import { dominantKind } from '../lib/dateKind';
+
+export type ScheduleView = 'day' | 'week';
+
+const VIEW_OPTIONS: { value: ScheduleView; label: string }[] = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+];
 
 interface Props {
   events: ScheduleEvent[];
@@ -13,6 +21,8 @@ interface Props {
   onSelect: (date: Date) => void;
   onShiftWeek: (delta: number) => void;
   markersOn: (date: Date) => DayMarker[];
+  view: ScheduleView;
+  onViewChange: (view: ScheduleView) => void;
 }
 
 export default function WeekStrip({
@@ -22,6 +32,8 @@ export default function WeekStrip({
   onSelect,
   onShiftWeek,
   markersOn,
+  view,
+  onViewChange,
 }: Props) {
   const monday = startOfWeek(selected);
 
@@ -51,6 +63,16 @@ export default function WeekStrip({
           label={monthLabel(selected)}
         />
         <span className="week-range">{weekRange(monday)}</span>
+
+        {/* Lives with the date navigation rather than in the toolbar: this row
+            already governs what stretch of time the schedule below is showing,
+            and how much of it is the same question. */}
+        <SegmentedControl
+          label="Show the schedule a day or a week at a time"
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={onViewChange}
+        />
       </div>
 
       <div className="week-nav">
