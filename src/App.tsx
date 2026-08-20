@@ -34,6 +34,7 @@ import ConfirmDeleteDialog from './components/ConfirmDeleteDialog';
 import DayGrid, { type DraftRange } from './components/DayGrid';
 import CommitmentList from './components/CommitmentList';
 import DayBrief from './components/DayBrief';
+import WeekBrief from './components/WeekBrief';
 import DayNotes from './components/DayNotes';
 import DueToday from './components/DueToday';
 import CommitmentDialog, {
@@ -503,16 +504,28 @@ export default function App() {
         <main className="layout-main">
           {/* Leads the column: the day gets summarised before it is laid out
               hour by hour. */}
-          <DayBrief
-            events={dayEvents}
-            conflicts={conflicts}
-            freeWindows={freeWindows}
-            markerCount={dayMarkers.length}
-            openTasks={openCount(tasks)}
-            now={now}
-            selected={selected}
-            isToday={isToday}
-          />
+          {/* The brief matches the scale being looked at. A day summary sitting
+              above seven columns describes one of them, which is the wrong
+              question for the view it is heading. */}
+          {view === 'day' ? (
+            <DayBrief
+              events={dayEvents}
+              conflicts={conflicts}
+              freeWindows={freeWindows}
+              markerCount={dayMarkers.length}
+              openTasks={openCount(tasks)}
+              now={now}
+              selected={selected}
+              isToday={isToday}
+            />
+          ) : (
+            <WeekBrief
+              events={events}
+              weekStart={startOfWeek(selected)}
+              markers={allMarkers}
+              today={today}
+            />
+          )}
 
           <DayNotes markers={dayMarkers} isToday={isToday} />
 
@@ -521,15 +534,19 @@ export default function App() {
               otherwise only findable by reading dates. */}
           <DueToday tasks={dueSelected} now={now} isToday={isToday} />
 
-          {/* The grid always renders. An empty schedule is a real, usable state —
-              it is the surface you drag on to build one, not an error to explain. */}
-          <StatTiles
-            events={dayEvents}
-            conflicts={conflicts}
-            freeWindows={freeWindows}
-            now={now}
-            isToday={isToday}
-          />
+          {/* Day view only. These describe the selected day — "11h free", "next
+              up" — and under a week brief reporting the week's free hours they
+              would be two different figures for the same words. The week brief
+              already carries the week's own totals. */}
+          {view === 'day' && (
+            <StatTiles
+              events={dayEvents}
+              conflicts={conflicts}
+              freeWindows={freeWindows}
+              now={now}
+              isToday={isToday}
+            />
+          )}
 
           <WeekStrip
             events={events}

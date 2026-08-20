@@ -56,7 +56,7 @@ export default function CommitmentList({ series, singles, onDelete, onDeleteSing
         <Chevron open={open} />
       </button>
 
-      <div className="manual-body" data-open={open}>
+      <div className="manual-body" data-open={open} inert={!open}>
         <div className="manual-body-inner">
           <div className="commitment-days">
             {WEEKDAYS.map((weekday) => {

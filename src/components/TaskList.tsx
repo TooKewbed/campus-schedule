@@ -347,7 +347,7 @@ function ReminderToggle({ reminders }: { reminders: RemindersApi }) {
   const label = blocked
     ? 'Notifications are blocked for this site in your browser settings'
     : reminders.enabled
-      ? 'Deadline reminders are on. They arrive while Skedge is open in a tab.'
+      ? 'Deadline reminders are on. They arrive while Skedge is open — install it to keep it running.'
       : 'Remind me about deadlines while Skedge is open';
 
   return (

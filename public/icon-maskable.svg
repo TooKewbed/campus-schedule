@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    The maskable variant of the Skedge mark.
+
+    Full-bleed and square-cornered, because the platform applies its own mask —
+    a circle on some Android launchers, a squircle on others. Supplying our own
+    rounded tile would get rounded a second time and lose its corners.
+
+    The bars are unchanged from favicon.svg. Their bounding box is 280x208,
+    whose diagonal is about 349px — inside the 409px safe circle a maskable
+    icon guarantees — so nothing is clipped whatever mask is used.
+  -->
+  <rect width="512" height="512" fill="#1E8A50"/>
+  <rect x="118" y="152" width="280" height="80" rx="40" fill="#66A882"/>
+  <rect x="118" y="152" width="100" height="80" rx="40" fill="#2FBF71"/>
+  <rect x="118" y="280" width="280" height="80" rx="40" fill="#66A882"/>
+  <rect x="118" y="280" width="176" height="80" rx="40" fill="#F5EAD8"/>
+</svg>

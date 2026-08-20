@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Task } from '../types/task';
 import { pendingReminders, pruneSent } from '../lib/reminders';
 import { loadReminders, saveReminders } from '../lib/storage';
+import { showNotification } from '../lib/pwa';
 
 export type PermissionState = 'unsupported' | 'default' | 'granted' | 'denied';
 
@@ -43,24 +44,33 @@ export function useReminders(tasks: Task[], now: Date): RemindersApi {
     const due = pendingReminders(tasksRef.current, now, state.sent);
     if (due.length === 0) return;
 
-    for (const reminder of due) {
-      try {
-        new Notification(reminder.title, {
+    let cancelled = false;
+
+    void (async () => {
+      const delivered: string[] = [];
+
+      for (const reminder of due) {
+        const shown = await showNotification({
+          title: reminder.title,
           body: reminder.body,
           // Replaces rather than stacks if the same task fires again later.
           tag: `skedge-${reminder.taskId}`,
-          icon: '/favicon-48.png',
         });
-      } catch {
-        // Some browsers refuse construction outside a service worker; there is
-        // nothing useful to tell the user here, and the in-app counts still work.
+        // Only remember what was actually shown. Marking a reminder delivered
+        // when the browser refused it would silently retire it for the day.
+        if (shown) delivered.push(reminder.key);
       }
-    }
 
-    setState((prev) => ({
-      ...prev,
-      sent: pruneSent([...prev.sent, ...due.map((r) => r.key)], now),
-    }));
+      if (cancelled || delivered.length === 0) return;
+      setState((prev) => ({
+        ...prev,
+        sent: pruneSent([...prev.sent, ...delivered], now),
+      }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [now, state.enabled, state.sent, permission]);
 
   const enable = useCallback(async () => {

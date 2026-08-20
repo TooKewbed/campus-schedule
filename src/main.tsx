@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import Root from './Root';
+import { registerServiceWorker } from './lib/pwa';
 import './styles.css';
 
 const container = document.getElementById('root');
@@ -11,3 +12,6 @@ createRoot(container).render(
     <Root />
   </StrictMode>,
 );
+
+// After the first render, so the worker never delays what people actually see.
+registerServiceWorker();

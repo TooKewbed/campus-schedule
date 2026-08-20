@@ -109,7 +109,7 @@ export default function ManualEntry({ count, defaultOpen, onAdd, onAddOnce }: Pr
         <Chevron open={open} />
       </button>
 
-      <div className="manual-body" data-open={open}>
+      <div className="manual-body" data-open={open} inert={!open}>
         <div className="manual-body-inner">
           <div className="manual-form">
             <label className="field">
