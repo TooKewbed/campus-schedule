@@ -30,7 +30,10 @@ export default function StatTiles({ events, conflicts, freeWindows, now, isToday
         </div>
       </div>
 
-      <div className="stat-tile">
+      {/* The one tile that carries the accent — but only when it has something
+          to say. An accented edge around an em-dash draws the eye to the
+          emptiest thing on the row. */}
+      <div className={`stat-tile${next ? ' lead' : ''}`}>
         <div className="label">Next up</div>
         <div className="value">{next ? next.title : '—'}</div>
         <div className="sub">

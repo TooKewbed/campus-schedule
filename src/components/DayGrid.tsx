@@ -276,11 +276,14 @@ export default function DayGrid({
             {freeWindows.map((w) => {
               const top = yFor(w.start);
               const height = yFor(w.end) - top;
+              // Inset by two pixels a side. The window now has a drawn edge, and
+              // without the inset consecutive windows weld into one long box and
+              // the dashes land exactly on a gridline.
               return (
                 <div
                   key={+w.start}
                   className="free"
-                  style={{ top: `${top}px`, height: `${height}px` }}
+                  style={{ top: `${top + 2}px`, height: `${Math.max(height - 4, 0)}px` }}
                 >
                   {height >= 34 ? `${formatDuration(w.minutes)} free` : null}
                 </div>

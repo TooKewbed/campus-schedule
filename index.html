@@ -9,7 +9,21 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
-    <meta name="theme-color" content="#1E8A50" />
+    <!-- Inter, the one face Nocturne names. Preconnect because the stylesheet
+         is render-blocking and the handshake is most of its cost; the CSS
+         falls back to the system stack, so a failed fetch offline costs
+         typography rather than a blank page. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+    />
+    <!-- Matches the Nocturne ground, so the phone's chrome joins the page
+         instead of ending it. Two of them: the tag is read before any CSS
+         runs, so the media query is the only way to answer per theme. -->
+    <meta name="theme-color" content="#e4e7f5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101120" media="(prefers-color-scheme: dark)" />
     <title>Skedge</title>
       <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="mobile-web-app-capable" content="yes" />

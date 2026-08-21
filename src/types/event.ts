@@ -116,14 +116,23 @@ export const COLOR_NAMES: ColorName[] = [
   'blue', 'violet', 'aqua', 'green', 'yellow', 'orange', 'exam',
 ];
 
-/** What each slot is called when a person has to choose one. */
+/**
+ * What each slot is called when a person has to choose one.
+ *
+ * These now say what the swatch actually shows. Two of them used to lie —
+ * 'orange' was drawn purple and labelled "Purple", 'violet' was drawn indigo
+ * and labelled "Indigo" — which was self-consistent but meant three of the
+ * four automatic colours sat within 55° of each other on the wheel, so
+ * distinct courses came out looking like the same course. The palette is
+ * spread across the wheel now, and the names match the paint.
+ */
 export const COLOR_LABEL: Record<ColorName, string> = {
   blue: 'Blue',
-  violet: 'Indigo',
+  violet: 'Violet',
   aqua: 'Teal',
   green: 'Green',
   yellow: 'Yellow',
-  orange: 'Purple',
+  orange: 'Orange',
   exam: 'Red',
 };
 
