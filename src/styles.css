@@ -62,15 +62,45 @@
      stored on every saved event, so a colour someone picked keeps its hue;
      only the tuning changes. Light theme takes the same hues darker, since
      these are read against a pale ground here. */
-  --blue:    oklch(0.55 0.13 255);
-  --purple:  oklch(0.55 0.13 310);
-  --indigo:  oklch(0.55 0.13 289);
-  --green:   oklch(0.52 0.13 155);
-  --teal:    oklch(0.53 0.12 205);
-  --yellow:  oklch(0.58 0.13 85);
-  --orange:  oklch(0.58 0.14 55);
-  --red:     oklch(0.53 0.17 20);
-  --pink:    oklch(0.55 0.16 350);
+  /* The event palette: twelve hues in spectrum order, red through pink.
+     Defined once here and consumed through the one table further down, so a
+     new slot is a line in each of these blocks and a line in that table —
+     not eight scattered lists to keep in step, which is what it was. */
+  --c-exam:   oklch(0.53 0.24 25);
+  --c-orange: oklch(0.60 0.21 50);
+  --c-amber:  oklch(0.62 0.18 72);
+  --c-yellow: oklch(0.66 0.17 95);
+  --c-lime:   oklch(0.60 0.20 128);
+  --c-green:  oklch(0.55 0.20 152);
+  --c-aqua:   oklch(0.55 0.15 195);
+  --c-blue:   oklch(0.52 0.24 255);
+  --c-indigo: oklch(0.47 0.26 280);
+  --c-violet: oklch(0.48 0.28 305);
+  --c-magenta:oklch(0.50 0.27 330);
+  --c-pink:   oklch(0.53 0.25 355);
+
+  /* The interface names the rest of the sheet already uses, pointed at the
+     palette so hues are stated in exactly one place. */
+  --red:    var(--c-exam);
+  --orange: var(--c-orange);
+  --yellow: var(--c-yellow);
+  --green:  var(--c-green);
+  --teal:   var(--c-aqua);
+  --blue:   var(--c-blue);
+  --indigo: var(--c-indigo);
+  --purple: var(--c-violet);
+  --pink:   var(--c-pink);
+
+  /* How much of the event colour the block is filled with. A token because
+     the two themes cannot take the same number: the 30% that gives a block
+     presence on the dark ground turns to pastel mud on a pale one. */
+  --ev-tint: 26%;
+  --ev-tint-flex: 15%;
+
+  /* The now line keeps its own value rather than a palette step. It is the
+     one mark on the grid that means "here, right now", and it should not
+     drift when the event colours are retuned. */
+  --now: #ff3b30;
 
   /* Labels — the neutral ramp read from its dark end. */
   --label:            #161826;
@@ -131,15 +161,39 @@
     --warn-tint: #4a2230;
     --warn-ink:  #f0b9c6;
 
-    --blue:    oklch(0.72 0.10 255);
-    --purple:  oklch(0.72 0.10 310);
-    --indigo:  #9184d9;
-    --green:   oklch(0.72 0.10 155);
-    --teal:    oklch(0.72 0.10 205);
-    --yellow:  oklch(0.72 0.10 95);
-    --orange:  oklch(0.72 0.10 55);
-    --red:     oklch(0.68 0.13 20);
-    --pink:    oklch(0.72 0.10 350);
+    /* The event palette: twelve hues in spectrum order, red through pink.
+       Defined once here and consumed through the one table further down, so a
+       new slot is a line in each of these blocks and a line in that table —
+       not eight scattered lists to keep in step, which is what it was. */
+    --c-exam:   oklch(0.66 0.25 25);
+    --c-orange: oklch(0.75 0.20 50);
+    --c-amber:  oklch(0.80 0.18 72);
+    --c-yellow: oklch(0.87 0.19 95);
+    --c-lime:   oklch(0.83 0.22 128);
+    --c-green:  oklch(0.76 0.21 152);
+    --c-aqua:   oklch(0.78 0.14 195);
+    --c-blue:   oklch(0.70 0.21 255);
+    --c-indigo: oklch(0.65 0.24 280);
+    --c-violet: oklch(0.68 0.26 305);
+    --c-magenta:oklch(0.68 0.26 330);
+    --c-pink:   oklch(0.70 0.24 355);
+
+    /* The interface names the rest of the sheet already uses, pointed at the
+       palette so hues are stated in exactly one place. */
+    --red:    var(--c-exam);
+    --orange: var(--c-orange);
+    --yellow: var(--c-yellow);
+    --green:  var(--c-green);
+    --teal:   var(--c-aqua);
+    --blue:   var(--c-blue);
+    --indigo: var(--c-indigo);
+    --purple: var(--c-violet);
+    --pink:   var(--c-pink);
+
+    --ev-tint: 40%;
+    --ev-tint-flex: 20%;
+
+    --now: #ff453a;
 
     --label:            #e9e9ed;
     --label-secondary:  #9397ab;
@@ -174,15 +228,39 @@
   --warn-tint: #4a2230;
   --warn-ink:  #f0b9c6;
 
-  --blue:    oklch(0.72 0.10 255);
-  --purple:  oklch(0.72 0.10 310);
-  --indigo:  #9184d9;
-  --green:   oklch(0.72 0.10 155);
-  --teal:    oklch(0.72 0.10 205);
-  --yellow:  oklch(0.72 0.10 95);
-  --orange:  oklch(0.72 0.10 55);
-  --red:     oklch(0.68 0.13 20);
-  --pink:    oklch(0.72 0.10 350);
+  /* The event palette: twelve hues in spectrum order, red through pink.
+     Defined once here and consumed through the one table further down, so a
+     new slot is a line in each of these blocks and a line in that table —
+     not eight scattered lists to keep in step, which is what it was. */
+  --c-exam:   oklch(0.66 0.25 25);
+  --c-orange: oklch(0.75 0.20 50);
+  --c-amber:  oklch(0.80 0.18 72);
+  --c-yellow: oklch(0.87 0.19 95);
+  --c-lime:   oklch(0.83 0.22 128);
+  --c-green:  oklch(0.76 0.21 152);
+  --c-aqua:   oklch(0.78 0.14 195);
+  --c-blue:   oklch(0.70 0.21 255);
+  --c-indigo: oklch(0.65 0.24 280);
+  --c-violet: oklch(0.68 0.26 305);
+  --c-magenta:oklch(0.68 0.26 330);
+  --c-pink:   oklch(0.70 0.24 355);
+
+  /* The interface names the rest of the sheet already uses, pointed at the
+     palette so hues are stated in exactly one place. */
+  --red:    var(--c-exam);
+  --orange: var(--c-orange);
+  --yellow: var(--c-yellow);
+  --green:  var(--c-green);
+  --teal:   var(--c-aqua);
+  --blue:   var(--c-blue);
+  --indigo: var(--c-indigo);
+  --purple: var(--c-violet);
+  --pink:   var(--c-pink);
+
+  --ev-tint: 40%;
+  --ev-tint-flex: 20%;
+
+  --now: #ff453a;
 
   --label:            #e9e9ed;
   --label-secondary:  #9397ab;
@@ -776,7 +854,7 @@ button { font: inherit; color: inherit; }
   /* Mixed in oklab, not sRGB: the palette is defined in oklch, and mixing it
      through sRGB pulls the mid-tints toward grey unevenly by hue — green came
      out muddier than blue at the same percentage. */
-  background: color-mix(in oklab, var(--ev-color) 16%, var(--bg-card));
+  background: color-mix(in oklab, var(--ev-color) var(--ev-tint), var(--bg-card));
   border-left: 3px solid var(--ev-color);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--label) 10%, transparent);
   color: var(--label-secondary);
@@ -801,11 +879,6 @@ button { font: inherit; color: inherit; }
 
 .ev .m { font-size: 11px; margin-top: 1px; letter-spacing: 0; }
 
-.ev.blue   { --ev-color: var(--blue); }
-.ev.orange { --ev-color: var(--orange); }
-.ev.violet { --ev-color: var(--indigo); }
-.ev.green  { --ev-color: var(--green); }
-.ev.exam   { --ev-color: var(--red); }
 
 /* A conflicting block keeps its own colour and gains a ring.
  *
@@ -901,7 +974,7 @@ button { font: inherit; color: inherit; }
   letter-spacing: -0.004em;
   color: var(--label-secondary);
   border: 1px dashed color-mix(in srgb, var(--flex-color) 70%, transparent);
-  background: color-mix(in oklab, var(--flex-color) 9%, var(--bg-card));
+  background: color-mix(in oklab, var(--flex-color) var(--ev-tint-flex), var(--bg-card));
 }
 /* Same reasoning as the fixed block: the dashed border already says
    "optional" and carries the hue, so the title is set in ordinary ink. */
@@ -914,35 +987,41 @@ button { font: inherit; color: inherit; }
 }
 .ev-flex .m { margin-top: 1px; font-size: 11px; letter-spacing: 0; }
 
-.ev-flex.aqua   { --flex-color: var(--teal); }
-.ev-flex.yellow { --flex-color: var(--yellow); }
-.ev-flex.violet { --flex-color: var(--indigo); }
-.ev-flex.blue   { --flex-color: var(--blue); }
 
 /* ---- now indicator: systemRed hairline, the iOS Calendar convention ---- */
 
 .now-line { position: absolute; left: 0; right: 0; height: 0; z-index: 5; pointer-events: none; }
-/* The now line fades out to the right rather than stopping cleanly — a
-   Nocturne signature, and useful here besides: a hard rule all the way across
-   competes with every block it crosses, while a line that dies away leaves the
-   afternoon legible. It reads in the accent rather than red, because now is a
-   position, not a warning; red is reserved for conflicts. */
+/* One solid rule, the same weight end to end.
+ *
+ * Nocturne fades its rules to transparent at the ends, and this line did too —
+ * but a line that fades reads as a line that thins, and "now" is not weaker at
+ * six o'clock than it is at noon. The taper also made the line hardest to see
+ * exactly where the afternoon's blocks are, which is where you look for it.
+ * A deliberate departure from the system: consistency of weight matters more
+ * here than the signature.
+ *
+ * It reads in red, because red is what a person looks for to find "now" on a
+ * calendar — every other calendar they use draws it that way. Conflicts do not
+ * collide with it: they use the pink-red warn ramp, a different value, and
+ * they never appear without the word "Double-booked" beside them. */
 .now-line .bar {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  height: 1px;
-  background: linear-gradient(to right, var(--accent-400), color-mix(in srgb, var(--accent-400) 0%, transparent));
+  height: 2px;
+  border-radius: 1px;
+  background: var(--now);
 }
+/* Centred on the 2px rule, so the dot sits on the line rather than beside it. */
 .now-line .knob {
   position: absolute;
-  left: -3px;
+  left: -4px;
   top: -3px;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--accent-400);
+  background: var(--now);
 }
 .now-line .lbl {
   position: absolute;
@@ -953,8 +1032,8 @@ button { font: inherit; color: inherit; }
   font-weight: 500;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--accent-ink);
-  background: var(--accent-tint);
+  color: var(--bg-card);
+  background: var(--now);
   padding: 1px 5px;
   border-radius: var(--r-sm);
   white-space: nowrap;
@@ -2407,13 +2486,7 @@ dialog.confirm.sheet { max-width: 460px; }
 /* Every palette slot on both block types, so a hand-picked colour works
    whatever the category. Previously each list held only the slots its own
    automatic assignment could produce. */
-.ev.aqua   { --ev-color: var(--teal); }
-.ev.yellow { --ev-color: var(--yellow); }
 
-.ev-flex.blue   { --flex-color: var(--blue); }
-.ev-flex.orange { --flex-color: var(--orange); }
-.ev-flex.green  { --flex-color: var(--green); }
-.ev-flex.exam   { --flex-color: var(--red); }
 
 /* ---------------------------------------------------------------- swatches -- */
 
@@ -2449,13 +2522,6 @@ dialog.confirm.sheet { max-width: 460px; }
 
 .swatch svg { width: 15px; height: 15px; }
 
-.swatch.blue   { --swatch: var(--blue); }
-.swatch.violet { --swatch: var(--indigo); }
-.swatch.aqua   { --swatch: var(--teal); }
-.swatch.green  { --swatch: var(--green); }
-.swatch.yellow { --swatch: var(--yellow); }
-.swatch.orange { --swatch: var(--orange); }
-.swatch.exam   { --swatch: var(--red); }
 
 /* The automatic slot wears the colour it would actually produce, with the "A"
    marking it as derived rather than chosen. */
@@ -2940,20 +3006,11 @@ dialog.confirm.share {
 
 /* The same slots the grid draws its blocks in, so a course chip is the colour
    of that course's classes without anyone keeping the two in step. */
-.course-chip.color-blue   { --chip: var(--blue); }
-.course-chip.color-orange { --chip: var(--orange); }
-.course-chip.color-violet { --chip: var(--indigo); }
-.course-chip.color-green  { --chip: var(--green); }
-.course-chip.color-aqua   { --chip: var(--teal); }
-.course-chip.color-yellow { --chip: var(--yellow); }
-.course-chip.color-exam   { --chip: var(--red); }
 
-/* Yellow at full saturation fails against a light card; darkened for text only,
-   the same trade the poster palette makes. */
-:root:not([data-theme="dark"]) .course-chip.color-yellow { --chip: #8a6d00; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .course-chip.color-yellow { --chip: var(--yellow); }
-}
+/* Yellow used to need a hand-darkened value here to survive on a light card.
+   It no longer does: the light theme's own yellow is already a deep
+   oklch(0.66 …), tuned for exactly this ground. The override also sat above
+   the palette table and so had stopped applying at all. */
 
 .task.done .course-chip {
   background: var(--fill-tertiary);
@@ -3529,13 +3586,6 @@ dialog.confirm.share {
 /* The same palette the blocks use, so a trip keeps its colour whether it is
    drawn as a band, a marker or a block. Written once for both new elements
    rather than duplicated per element. */
-.allday-item.blue,   .ev-moment.blue   { --ev-color: var(--blue); }
-.allday-item.orange, .ev-moment.orange { --ev-color: var(--orange); }
-.allday-item.violet, .ev-moment.violet { --ev-color: var(--indigo); }
-.allday-item.green,  .ev-moment.green  { --ev-color: var(--green); }
-.allday-item.aqua,   .ev-moment.aqua   { --ev-color: var(--teal); }
-.allday-item.yellow, .ev-moment.yellow { --ev-color: var(--yellow); }
-.allday-item.exam,   .ev-moment.exam   { --ev-color: var(--red); }
 
 /* ---- the week's all-day row ---- */
 
@@ -3603,13 +3653,6 @@ dialog.confirm.share {
   outline-offset: 1px;
 }
 
-.wg-band.blue   { --ev-color: var(--blue); }
-.wg-band.orange { --ev-color: var(--orange); }
-.wg-band.violet { --ev-color: var(--indigo); }
-.wg-band.green  { --ev-color: var(--green); }
-.wg-band.aqua   { --ev-color: var(--teal); }
-.wg-band.yellow { --ev-color: var(--yellow); }
-.wg-band.exam   { --ev-color: var(--red); }
 
 /* ---- a moment in a week column ---- */
 
@@ -3659,10 +3702,93 @@ dialog.confirm.share {
 }
 .wg-moment:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
 
-.wg-moment.blue   { --ev-color: var(--blue); }
-.wg-moment.orange { --ev-color: var(--orange); }
-.wg-moment.violet { --ev-color: var(--indigo); }
-.wg-moment.green  { --ev-color: var(--green); }
-.wg-moment.aqua   { --ev-color: var(--teal); }
-.wg-moment.yellow { --ev-color: var(--yellow); }
-.wg-moment.exam   { --ev-color: var(--red); }
+
+/* ------------------------------------------------------- the one palette -- */
+/* Every element that can wear an event colour, keyed by the colour name that
+   is stored on the event. Adding a slot means one row here and one line in
+   each token block above — nowhere else. */
+
+.ev.exam, .ev-flex.exam, .allday-item.exam, .ev-moment.exam,
+.wg-band.exam, .wg-moment.exam, .swatch.exam, .course-chip.color-exam {
+  --ev-color: var(--c-exam);
+  --flex-color: var(--c-exam);
+  --swatch: var(--c-exam);
+  --chip: var(--c-exam);
+}
+.ev.orange, .ev-flex.orange, .allday-item.orange, .ev-moment.orange,
+.wg-band.orange, .wg-moment.orange, .swatch.orange, .course-chip.color-orange {
+  --ev-color: var(--c-orange);
+  --flex-color: var(--c-orange);
+  --swatch: var(--c-orange);
+  --chip: var(--c-orange);
+}
+.ev.amber, .ev-flex.amber, .allday-item.amber, .ev-moment.amber,
+.wg-band.amber, .wg-moment.amber, .swatch.amber, .course-chip.color-amber {
+  --ev-color: var(--c-amber);
+  --flex-color: var(--c-amber);
+  --swatch: var(--c-amber);
+  --chip: var(--c-amber);
+}
+.ev.yellow, .ev-flex.yellow, .allday-item.yellow, .ev-moment.yellow,
+.wg-band.yellow, .wg-moment.yellow, .swatch.yellow, .course-chip.color-yellow {
+  --ev-color: var(--c-yellow);
+  --flex-color: var(--c-yellow);
+  --swatch: var(--c-yellow);
+  --chip: var(--c-yellow);
+}
+.ev.lime, .ev-flex.lime, .allday-item.lime, .ev-moment.lime,
+.wg-band.lime, .wg-moment.lime, .swatch.lime, .course-chip.color-lime {
+  --ev-color: var(--c-lime);
+  --flex-color: var(--c-lime);
+  --swatch: var(--c-lime);
+  --chip: var(--c-lime);
+}
+.ev.green, .ev-flex.green, .allday-item.green, .ev-moment.green,
+.wg-band.green, .wg-moment.green, .swatch.green, .course-chip.color-green {
+  --ev-color: var(--c-green);
+  --flex-color: var(--c-green);
+  --swatch: var(--c-green);
+  --chip: var(--c-green);
+}
+.ev.aqua, .ev-flex.aqua, .allday-item.aqua, .ev-moment.aqua,
+.wg-band.aqua, .wg-moment.aqua, .swatch.aqua, .course-chip.color-aqua {
+  --ev-color: var(--c-aqua);
+  --flex-color: var(--c-aqua);
+  --swatch: var(--c-aqua);
+  --chip: var(--c-aqua);
+}
+.ev.blue, .ev-flex.blue, .allday-item.blue, .ev-moment.blue,
+.wg-band.blue, .wg-moment.blue, .swatch.blue, .course-chip.color-blue {
+  --ev-color: var(--c-blue);
+  --flex-color: var(--c-blue);
+  --swatch: var(--c-blue);
+  --chip: var(--c-blue);
+}
+.ev.indigo, .ev-flex.indigo, .allday-item.indigo, .ev-moment.indigo,
+.wg-band.indigo, .wg-moment.indigo, .swatch.indigo, .course-chip.color-indigo {
+  --ev-color: var(--c-indigo);
+  --flex-color: var(--c-indigo);
+  --swatch: var(--c-indigo);
+  --chip: var(--c-indigo);
+}
+.ev.violet, .ev-flex.violet, .allday-item.violet, .ev-moment.violet,
+.wg-band.violet, .wg-moment.violet, .swatch.violet, .course-chip.color-violet {
+  --ev-color: var(--c-violet);
+  --flex-color: var(--c-violet);
+  --swatch: var(--c-violet);
+  --chip: var(--c-violet);
+}
+.ev.magenta, .ev-flex.magenta, .allday-item.magenta, .ev-moment.magenta,
+.wg-band.magenta, .wg-moment.magenta, .swatch.magenta, .course-chip.color-magenta {
+  --ev-color: var(--c-magenta);
+  --flex-color: var(--c-magenta);
+  --swatch: var(--c-magenta);
+  --chip: var(--c-magenta);
+}
+.ev.pink, .ev-flex.pink, .allday-item.pink, .ev-moment.pink,
+.wg-band.pink, .wg-moment.pink, .swatch.pink, .course-chip.color-pink {
+  --ev-color: var(--c-pink);
+  --flex-color: var(--c-pink);
+  --swatch: var(--c-pink);
+  --chip: var(--c-pink);
+}

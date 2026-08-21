@@ -4,6 +4,7 @@ import { addDays, startOfDay, startOfWeek, toISODate, parseISODate } from './tim
 import { occurrencesOn, type DayOccurrence } from './spans';
 import {
   CATEGORY_KIND,
+  COLOR_NAMES,
   type ColorName,
   type EventCategory,
   type ScheduleEvent,
@@ -472,15 +473,10 @@ const KINDS = new Set<string>([
   'other',
   'holiday',
 ]);
-const COLORS = new Set<string>([
-  'blue',
-  'orange',
-  'violet',
-  'green',
-  'aqua',
-  'yellow',
-  'exam',
-]);
+/* Derived, not copied. This list used to be typed out again here, which meant
+   adding a palette slot silently dropped it on the way back out of a share
+   link — the colour survived the trip and then failed validation. */
+const COLORS = new Set<string>(COLOR_NAMES);
 
 /** Returns a one-element array, or an empty one to drop the entry. */
 function cleanEvent(raw: unknown, days: number): SharedEvent[] {

@@ -2,7 +2,19 @@ import type { ColorName, ScheduleEvent } from '../types/event';
 
 export type { ColorName };
 
-const FIXED_PALETTE: ColorName[] = ['blue', 'orange', 'violet', 'green'];
+/**
+ * The slots an automatic colour is drawn from.
+ *
+ * Six rather than four, and chosen for the gaps between them: with four slots
+ * two courses collided about a quarter of the time, and when they did the
+ * schedule showed two different classes in the same colour — which is the one
+ * thing this function exists to prevent. Six drops that to roughly one in six,
+ * and no two of these sit closer than 43° apart on the wheel.
+ *
+ * Red is not among them. It is spent on exams, which take it by category a few
+ * lines below, and a class that happened to be red would read as one.
+ */
+const FIXED_PALETTE: ColorName[] = ['blue', 'orange', 'violet', 'green', 'aqua', 'yellow'];
 
 const FLEXIBLE_COLOR: Record<string, ColorName> = {
   'office-hours': 'aqua',

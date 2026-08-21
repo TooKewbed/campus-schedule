@@ -57,15 +57,6 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 };
 
 /**
- * Categories whose real name the person writes in themselves.
- *
- * There are two rather than one because the fixed/flexible split is the whole
- * point of the category: a custom type still has to say whether it blocks
- * time, and the dropdown already groups by exactly that. Deriving the kind
- * from a stored flag instead would put a second source of truth next to the
- * table above, which is the drift this file exists to prevent.
- */
-/**
  * A cap on the typed type name.
  *
  * It is drawn in the commitment list beside a title that has its own limit,
@@ -75,6 +66,15 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
  */
 export const MAX_CATEGORY_LABEL = 40;
 
+/**
+ * Categories whose real name the person writes in themselves.
+ *
+ * There are two rather than one because the fixed/flexible split is the whole
+ * point of the category: a custom type still has to say whether it blocks
+ * time, and the dropdown already groups by exactly that. Deriving the kind
+ * from a stored flag instead would put a second source of truth next to the
+ * table above, which is the drift this file exists to prevent.
+ */
 export function isOtherCategory(category: EventCategory): boolean {
   return category === 'other' || category === 'other-flexible';
 }
@@ -109,32 +109,69 @@ export function toCategory(value: unknown): EventCategory {
  *
  * Lives here rather than in lib/colors so an event can name its own colour
  * without the type module depending on the module that derives one.
+ *
+ * 'exam' is the red slot. The name is a leftover from when the palette was
+ * keyed to categories rather than to colours, and it is kept because it is
+ * the value already written on saved events and in the database — renaming
+ * it would silently repaint every exam anyone has ever coloured.
  */
-export type ColorName = 'blue' | 'orange' | 'violet' | 'green' | 'aqua' | 'yellow' | 'exam';
-
-export const COLOR_NAMES: ColorName[] = [
-  'blue', 'violet', 'aqua', 'green', 'yellow', 'orange', 'exam',
-];
+export type ColorName =
+  | 'exam'
+  | 'orange'
+  | 'amber'
+  | 'yellow'
+  | 'lime'
+  | 'green'
+  | 'aqua'
+  | 'blue'
+  | 'indigo'
+  | 'violet'
+  | 'magenta'
+  | 'pink';
 
 /**
- * What each slot is called when a person has to choose one.
+ * Spectrum order — red through violet, the way a rainbow runs.
  *
- * These now say what the swatch actually shows. Two of them used to lie —
- * 'orange' was drawn purple and labelled "Purple", 'violet' was drawn indigo
- * and labelled "Indigo" — which was self-consistent but meant three of the
- * four automatic colours sat within 55° of each other on the wheel, so
- * distinct courses came out looking like the same course. The palette is
- * spread across the wheel now, and the names match the paint.
+ * This is the order the picker draws them in, and the order is the point: a
+ * row of swatches sorted by hue can be scanned for "the green one" without
+ * reading anything, where an arbitrary order has to be searched. Adding a
+ * colour means putting it at its wavelength, not on the end.
  */
+export const COLOR_NAMES: ColorName[] = [
+  'exam',
+  'orange',
+  'amber',
+  'yellow',
+  'lime',
+  'green',
+  'aqua',
+  'blue',
+  'indigo',
+  'violet',
+  'magenta',
+  'pink',
+];
+
+/** What each slot is called when a person has to choose one. */
 export const COLOR_LABEL: Record<ColorName, string> = {
-  blue: 'Blue',
-  violet: 'Violet',
-  aqua: 'Teal',
-  green: 'Green',
-  yellow: 'Yellow',
-  orange: 'Orange',
   exam: 'Red',
+  orange: 'Orange',
+  amber: 'Amber',
+  yellow: 'Yellow',
+  lime: 'Lime',
+  green: 'Green',
+  aqua: 'Aqua',
+  blue: 'Blue',
+  indigo: 'Indigo',
+  violet: 'Violet',
+  magenta: 'Magenta',
+  pink: 'Pink',
 };
+
+/** A colour name written by an older or newer build, made safe on read. */
+export function isColorName(value: unknown): value is ColorName {
+  return typeof value === 'string' && (COLOR_NAMES as string[]).includes(value);
+}
 
 export interface ScheduleEvent {
   /** Unique per occurrence. Recurring events expand to many ids, one seriesId. */

@@ -44,13 +44,18 @@ export const INK = {
 
 /** Block fills, matching the palette the app draws on screen. */
 export const FILL: Record<ColorName, string> = {
-  blue: '#007aff',
-  orange: '#af52de',
-  violet: '#5856d6',
-  green: '#34c759',
-  aqua: '#30b0c7',
-  yellow: '#ffcc00',
-  exam: '#ff3b30',
+  exam:    '#e5342b',
+  orange:  '#f07316',
+  amber:   '#e0930a',
+  yellow:  '#d9b400',
+  lime:    '#6aae1e',
+  green:   '#1f9d55',
+  aqua:    '#0d99b0',
+  blue:    '#1a72e8',
+  indigo:  '#5b52d8',
+  violet:  '#8b45d4',
+  magenta: '#c2359f',
+  pink:    '#e0326e',
 };
 
 /**
@@ -61,13 +66,18 @@ export const FILL: Record<ColorName, string> = {
  * daylight. The fills stay bright; only the type is darkened.
  */
 export const TEXT_COLOR: Record<ColorName, string> = {
-  blue: '#0062cc',
-  orange: '#8a3fb0',
-  violet: '#4644ab',
-  green: '#1e8a50',
-  aqua: '#1a7f92',
-  yellow: '#8a6d00',
-  exam: '#d32b21',
+  exam:    '#b7241d',
+  orange:  '#b3550a',
+  amber:   '#8f5d00',
+  yellow:  '#7d6700',
+  lime:    '#4a7a12',
+  green:   '#16703c',
+  aqua:    '#0a6d7e',
+  blue:    '#1257b3',
+  indigo:  '#453da8',
+  violet:  '#6a34a3',
+  magenta: '#96287b',
+  pink:    '#ad2455',
 };
 
 export const KIND_COLOR: Record<MarkerKind, string> = {
