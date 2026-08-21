@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CATEGORY_KIND,
   CATEGORY_LABEL,
+  MAX_CATEGORY_LABEL,
+  isOtherCategory,
   type ColorName,
   type EventCategory,
   type ScheduleEvent,
@@ -67,8 +69,8 @@ const END_MODE_OPTIONS: { value: EndMode; label: string }[] = [
   { value: 'never', label: 'No end' },
 ];
 
-const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment'];
-const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring'];
+const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment', 'other'];
+const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring', 'other-flexible'];
 
 /**
  * One dialog for both creating and editing, so a commitment looks and behaves
@@ -82,6 +84,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('class');
+  const [categoryLabel, setCategoryLabel] = useState('');
   const [location, setLocation] = useState('');
   const [color, setColor] = useState<ColorName | null>(null);
   const [start, setStart] = useState('09:00');
@@ -141,6 +144,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
         setWeekdays([date.getDay()]);
         setUntil(toISODate(addDays(date, DEFAULT_TERM_DAYS)));
         setEndMode("date");
+        setCategoryLabel("");
         // Dragging on the grid always draws an ordinary block.
         setShape("block");
         setLastDay("");
@@ -153,6 +157,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
         setStart(toTimeInput(minutesOfDate(e.start)));
         setEnd(toTimeInput(minutesOfDate(e.end)));
         setCategory(e.category);
+        setCategoryLabel(e.categoryLabel ?? '');
         setScope(e.seriesId ? 'all' : 'one');
         setWeekdays(
           target.seriesWeekdays.length > 0 ? target.seriesWeekdays : [e.start.getDay()],
@@ -203,6 +208,32 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
   }, [shown, title, category]);
   const recurring = shown?.mode === 'edit' && Boolean(shown.event.seriesId);
 
+  /**
+   * The one question a new commitment answers, from the range just drawn.
+   *
+   * Repeating and shape were two separate controls, which let the pair say
+   * things that do not exist — a weekly trip across days, a moment that
+   * repeats. Folded into one exclusive choice they cannot, and it is the same
+   * four options, in the same words, as the panel below the grid. Derived from
+   * the two pieces of state rather than stored as a third, so there is nothing
+   * to keep in step.
+   */
+  const entryMode: EntryMode =
+    shape === 'span' ? 'span' : shape === 'moment' ? 'moment' : repeats ? 'weekly' : 'once';
+
+  const chooseEntryMode = (next: EntryMode) => {
+    setProblem(null);
+    setShape(next === 'span' ? 'span' : next === 'moment' ? 'moment' : 'block');
+    setRepeats(next === 'weekly');
+    // A span opens on the day after the one drawn on, so the range is never
+    // invalid at the moment the fields appear.
+    if (next === 'span' && !lastDay) setLastDay(toISODate(addDays(startOfDay(date), 1)));
+  };
+
+  /** Whole days have no times to show; a moment has a start but no end. */
+  const showsStartTime = shape !== 'span' || !spanAllDay;
+  const showsEndTime = shape === 'block' || (shape === 'span' && !spanAllDay);
+
   const endsOnDate = endMode === 'date';
   const untilDate = parseISODate(until, date);
   const occurrences = endsOnDate ? countOccurrences(weekdays, date, untilDate) : 0;
@@ -218,6 +249,10 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
       setProblem('Give it a name.');
       return;
     }
+    if (isOtherCategory(category) && !categoryLabel.trim()) {
+      setProblem('Type what kind of commitment this is.');
+      return;
+    }
     // A moment has no end to be after the start, and a span's end is on a
     // different day — out Friday at 6pm and back Sunday at 9am is not backwards.
     if (shape === 'block' && duration <= 0) {
@@ -229,8 +264,14 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
         setProblem('Pick the last day.');
         return;
       }
-      if (shown?.mode === 'edit' && parseISODate(lastDay) < startOfDay(shown.event.start)) {
+      // The first day is the one being edited, or the one just drawn on.
+      const firstDay = shown?.mode === 'edit' ? startOfDay(shown.event.start) : startOfDay(date);
+      if (parseISODate(lastDay) < firstDay) {
         setProblem('The last day cannot be before the first.');
+        return;
+      }
+      if (parseISODate(lastDay).getTime() === firstDay.getTime()) {
+        setProblem('Pick a later day, or use “Just once” for a single day.');
         return;
       }
     }
@@ -257,6 +298,7 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
     const values: CommitmentValues = {
       title,
       category,
+      categoryLabel,
       location,
       startMinutes,
       endMinutes,
@@ -335,6 +377,22 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
             </select>
           </label>
 
+          {isOtherCategory(category) && (
+            <label className="field">
+              <span className="field-label">Call it</span>
+              <input
+                value={categoryLabel}
+                onChange={(e) => {
+                  setCategoryLabel(e.target.value);
+                  setProblem(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="Band practice, physio…"
+                maxLength={MAX_CATEGORY_LABEL}
+              />
+            </label>
+          )}
+
           <label className="field">
             <span className="field-label">Location</span>
             <input
@@ -350,21 +408,101 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
             <ColorPicker value={color} onChange={setColor} automatic={autoColor} />
           </div>
 
-          <label className="field">
-            <span className="field-label">Starts</span>
-            <input
-              type="time"
-              value={start}
-              onChange={(e) => {
-                setStart(e.target.value);
-                setProblem(null);
-              }}
-            />
-          </label>
+          {!editing && (
+            <>
+              {/* The same four options as the panel below the grid, so what you
+                  drew can become any of them without retyping it somewhere else. */}
+              <fieldset className="repeat-choice field-wide four">
+                <legend className="field-label">When is it?</legend>
+                <ChoiceOption
+                  on={entryMode === 'weekly'}
+                  onSelect={() => chooseEntryMode('weekly')}
+                  name="repeats"
+                  title="Every week"
+                  sub="On the days you pick"
+                />
+                <ChoiceOption
+                  on={entryMode === 'once'}
+                  onSelect={() => chooseEntryMode('once')}
+                  name="repeats"
+                  title="Just once"
+                  sub={`Only this ${weekday}`}
+                />
+                <ChoiceOption
+                  on={entryMode === 'span'}
+                  onSelect={() => chooseEntryMode('span')}
+                  name="repeats"
+                  title="Across days"
+                  sub="A trip, a break, a conference"
+                />
+                <ChoiceOption
+                  on={entryMode === 'moment'}
+                  onSelect={() => chooseEntryMode('moment')}
+                  name="repeats"
+                  title="Just a time"
+                  sub="No end — a flight, a train"
+                />
+              </fieldset>
+
+              {entryMode === 'weekly' && (
+                <div className="field field-wide repeat-days">
+                  <span className="field-label">Repeats on</span>
+                  <WeekdayPicker
+                    value={weekdays}
+                    onChange={(next) => {
+                      setWeekdays(next);
+                      setProblem(null);
+                    }}
+                  />
+                  <div className="repeat-until">
+                    <SegmentedControl
+                      label="How long it repeats"
+                      options={END_MODE_OPTIONS}
+                      value={endMode}
+                      onChange={(next) => {
+                        setEndMode(next);
+                        setProblem(null);
+                      }}
+                    />
+                    {endMode === 'date' && (
+                      <input
+                        type="date"
+                        className="until-input"
+                        value={until}
+                        // Blocks the obvious mistake in the native picker; the
+                        // submit check still covers a typed-in past date.
+                        min={toISODate(startOfDay(date))}
+                        aria-label="Repeat end date"
+                        onChange={(e) => {
+                          setUntil(e.target.value);
+                          setProblem(null);
+                        }}
+                      />
+                    )}
+                    <span className="field-hint">{summary}</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {showsStartTime && (
+            <label className="field">
+              <span className="field-label">Starts</span>
+              <input
+                type="time"
+                value={start}
+                onChange={(e) => {
+                  setStart(e.target.value);
+                  setProblem(null);
+                }}
+              />
+            </label>
+          )}
 
           {/* A moment has no end, so the field is gone rather than disabled:
               a greyed-out time still shows a value that is not real. */}
-          {shape !== 'moment' && (
+          {showsEndTime && (
             <label className="field">
               <span className="field-label">{shape === 'span' ? 'Ends (last day)' : 'Ends'}</span>
               <input
@@ -375,6 +513,26 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
                   setProblem(null);
                 }}
               />
+            </label>
+          )}
+
+          {shape === 'span' && (
+            <label className="field field-wide switch-row">
+              <input
+                type="checkbox"
+                checked={spanAllDay}
+                onChange={(e) => {
+                  setSpanAllDay(e.target.checked);
+                  setProblem(null);
+                }}
+              />
+              <span>
+                All day
+                <span className="field-hint">
+                  What a trip or a break usually is. Turn it off to give the first and last
+                  days their own times.
+                </span>
+              </span>
             </label>
           )}
 
@@ -396,67 +554,6 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
           )}
         </div>
 
-        {!editing && (
-          <>
-            <fieldset className="repeat-choice">
-              <legend className="field-label">Does this repeat?</legend>
-              <ChoiceOption
-                on={repeats}
-                onSelect={() => setRepeats(true)}
-                name="repeats"
-                title="Every week"
-                sub="On the days you pick"
-              />
-              <ChoiceOption
-                on={!repeats}
-                onSelect={() => setRepeats(false)}
-                name="repeats"
-                title="Just once"
-                sub={`Only this ${weekday}`}
-              />
-            </fieldset>
-
-            {repeats && (
-              <div className="field repeat-days">
-                <span className="field-label">Repeats on</span>
-                <WeekdayPicker
-                  value={weekdays}
-                  onChange={(next) => {
-                    setWeekdays(next);
-                    setProblem(null);
-                  }}
-                />
-                <div className="repeat-until">
-                  <SegmentedControl
-                    label="How long it repeats"
-                    options={END_MODE_OPTIONS}
-                    value={endMode}
-                    onChange={(next) => {
-                      setEndMode(next);
-                      setProblem(null);
-                    }}
-                  />
-                  {endMode === 'date' && (
-                    <input
-                      type="date"
-                      className="until-input"
-                      value={until}
-                      // Blocks the obvious mistake in the native picker; the
-                      // submit check still covers a typed-in past date.
-                      min={toISODate(startOfDay(date))}
-                      aria-label="Repeat end date"
-                      onChange={(e) => {
-                        setUntil(e.target.value);
-                        setProblem(null);
-                      }}
-                    />
-                  )}
-                  <span className="field-hint">{summary}</span>
-                </div>
-              </div>
-            )}
-          </>
-        )}
 
         {recurring && (
           <>
@@ -538,6 +635,9 @@ export default function CommitmentDialog({ target, date, onDismiss, onCreate, on
 
 /** The three shapes the editor can be showing. */
 type Shape = "block" | "moment" | "span";
+
+/** Shape and repetition as the single choice a person actually makes. */
+type EntryMode = 'weekly' | 'once' | 'span' | 'moment';
 
 /**
  * The last day a span is actually on.

@@ -251,6 +251,14 @@ export default function App() {
             addDays(anchor, EXPAND_FORWARD_DAYS),
           ),
         ]);
+      } else if (values.moment) {
+        setEvents((prev) => [...prev, createMoment(input, selected)]);
+      } else if (values.lastDay) {
+        // The day drawn on is the first; the dialog supplies the last.
+        setEvents((prev) => [
+          ...prev,
+          createSpan(input, selected, values.lastDay!, values.allDay ?? false),
+        ]);
       } else {
         setEvents((prev) => [...prev, createSingleCommitment(input, selected)]);
       }

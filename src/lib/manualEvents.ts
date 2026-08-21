@@ -1,4 +1,11 @@
-import { byStart, type ColorName, type EventCategory, type ScheduleEvent } from '../types/event';
+import {
+  MAX_CATEGORY_LABEL,
+  byStart,
+  isOtherCategory,
+  type ColorName,
+  type EventCategory,
+  type ScheduleEvent,
+} from '../types/event';
 import { extractCourseCode } from './categorize';
 import { addDays, startOfDay } from './time';
 
@@ -13,6 +20,8 @@ import { addDays, startOfDay } from './time';
 export interface ManualSeriesInput {
   title: string;
   category: EventCategory;
+  /** What the person called the type, when the category is one of the 'other' two. */
+  categoryLabel?: string;
   /** JS getDay() values: 0 = Sunday ... 6 = Saturday. */
   weekdays: number[];
   startMinutes: number;
@@ -26,7 +35,8 @@ export interface ManualSeriesInput {
 
 /** Returns a human-readable problem, or null when the input is usable. */
 export function validateSeries(input: ManualSeriesInput): string | null {
-  if (!input.title.trim()) return 'Give it a name.';
+  const naming = validateNaming(input);
+  if (naming) return naming;
   if (input.weekdays.length === 0) return 'Pick at least one day of the week.';
   return validateCore(input);
 }
@@ -62,6 +72,7 @@ export function expandManualSeries(
       start,
       end,
       category: input.category,
+      categoryLabel: labelFor(input.category, input.categoryLabel),
       location,
       courseCode,
       color: input.color,
@@ -77,6 +88,7 @@ export interface ManualSeries {
   seriesId: string;
   title: string;
   category: EventCategory;
+  categoryLabel?: string;
   location?: string;
   weekdays: number[];
   startMinutes: number;
@@ -100,6 +112,7 @@ export function summarizeManualSeries(events: ScheduleEvent[]): ManualSeries[] {
       seriesId,
       title: first.title,
       category: first.category,
+      categoryLabel: first.categoryLabel,
       location: first.location,
       weekdays: [...new Set(occurrences.map((e) => e.start.getDay()))].sort(),
       startMinutes: minutesOf(first.start),
@@ -134,6 +147,21 @@ function minutesOf(d: Date): number {
 }
 
 /**
+ * The custom type name, kept only where it means something.
+ *
+ * Dropped for the built-in categories rather than carried along, so that
+ * changing a commitment from "Other" to "Class" cannot leave a stale label
+ * sitting on the record — invisible while it is a class, and back again the
+ * moment anyone switches it to "Other" for an unrelated reason.
+ */
+function labelFor(category: EventCategory, label?: string): string | undefined {
+  if (!isOtherCategory(category)) return undefined;
+  // Capped here rather than only in the form: maxLength on an input is a
+  // courtesy, not a guarantee — paste and autofill both go around it.
+  return label?.trim().slice(0, MAX_CATEGORY_LABEL) || undefined;
+}
+
+/**
  * A single, non-repeating commitment on one specific day.
  *
  * Left without a seriesId on purpose: that absence is what tells the delete
@@ -153,6 +181,7 @@ export function createSingleCommitment(
     start,
     end: atMinutes(date, input.endMinutes),
     category: input.category,
+    categoryLabel: labelFor(input.category, input.categoryLabel),
     location: input.location?.trim() || undefined,
     courseCode: extractCourseCode(title),
     color: input.color,
@@ -182,6 +211,7 @@ export function createMoment(
     start: at,
     end: new Date(at),
     category: input.category,
+    categoryLabel: labelFor(input.category, input.categoryLabel),
     location: input.location?.trim() || undefined,
     courseCode: extractCourseCode(title),
     color: input.color,
@@ -220,6 +250,7 @@ export function createSpan(
     start,
     end,
     category: input.category,
+    categoryLabel: labelFor(input.category, input.categoryLabel),
     location: input.location?.trim() || undefined,
     courseCode: extractCourseCode(title),
     color: input.color,
@@ -235,7 +266,8 @@ export function validateSpan(
   to: Date,
   allDay: boolean,
 ): string | null {
-  if (!input.title.trim()) return 'Give it a name.';
+  const naming = validateNaming(input);
+  if (naming) return naming;
   if (startOfDay(to) < startOfDay(from)) return 'The last day cannot be before the first.';
   if (startOfDay(to).getTime() === startOfDay(from).getTime()) {
     return 'Pick a later day, or use “Just once” for a single day.';
@@ -249,13 +281,15 @@ export function validateSpan(
 export function validateMoment(
   input: Omit<ManualSeriesInput, 'weekdays' | 'endMinutes'>,
 ): string | null {
-  return input.title.trim() ? null : 'Give it a name.';
+  return validateNaming(input);
 }
 
 /** Fields an existing commitment can be edited to. */
 export interface CommitmentValues {
   title: string;
   category: EventCategory;
+  /** Only read when the category is one of the 'other' two. */
+  categoryLabel?: string;
   location: string;
   startMinutes: number;
   endMinutes: number;
@@ -284,6 +318,7 @@ export function applyValues(event: ScheduleEvent, values: CommitmentValues): Sch
     ...event,
     title,
     category: values.category,
+    categoryLabel: labelFor(values.category, values.categoryLabel),
     location: values.location.trim() || undefined,
     courseCode: extractCourseCode(title),
     color: values.color ?? undefined,
@@ -340,12 +375,35 @@ export function seriesEndDate(events: ScheduleEvent[], seriesId: string): Date |
 }
 
 /** Checks that apply whether or not the commitment repeats. */
+/**
+ * Problems with what a commitment is called — its own name, and the name of
+ * its type when that is one the person is writing in themselves.
+ *
+ * Shared by all four shapes because an unnamed "Other" is equally useless in
+ * every one of them: the grid would list a commitment whose type reads as the
+ * placeholder the field existed to replace.
+ */
+function validateNaming(input: {
+  title: string;
+  category: EventCategory;
+  categoryLabel?: string;
+}): string | null {
+  if (!input.title.trim()) return 'Give it a name.';
+  if (isOtherCategory(input.category) && !input.categoryLabel?.trim()) {
+    return 'Type what kind of commitment this is.';
+  }
+  return null;
+}
+
 function validateCore(input: {
   title: string;
+  category: EventCategory;
+  categoryLabel?: string;
   startMinutes: number;
   endMinutes: number;
 }): string | null {
-  if (!input.title.trim()) return 'Give it a name.';
+  const naming = validateNaming(input);
+  if (naming) return naming;
   if (input.endMinutes <= input.startMinutes) return 'The end time must be after the start time.';
   return null;
 }
@@ -380,6 +438,7 @@ export interface DayCommitment {
   key: string;
   title: string;
   category: EventCategory;
+  categoryLabel?: string;
   location?: string;
   startMinutes: number;
   endMinutes: number;
@@ -410,6 +469,7 @@ export function groupByWeekday(
         key: `${s.seriesId}-${weekday}`,
         title: s.title,
         category: s.category,
+        categoryLabel: s.categoryLabel,
         location: s.location,
         startMinutes: s.startMinutes,
         endMinutes: s.endMinutes,
@@ -423,6 +483,7 @@ export function groupByWeekday(
       key: event.id,
       title: event.title,
       category: event.category,
+      categoryLabel: event.categoryLabel,
       location: event.location,
       startMinutes: minutesOfDate(event.start),
       endMinutes: minutesOfDate(event.end),

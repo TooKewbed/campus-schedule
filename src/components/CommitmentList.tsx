@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CATEGORY_KIND, CATEGORY_LABEL, type ScheduleEvent } from '../types/event';
+import { CATEGORY_KIND, categoryNameOf, type ScheduleEvent } from '../types/event';
 import { groupByWeekday, toTimeInput, type ManualSeries } from '../lib/manualEvents';
 import { formatDuration } from '../lib/time';
 import { WEEKDAYS } from '../lib/weekdays';
@@ -98,7 +98,7 @@ export default function CommitmentList({ series, singles, onDelete, onDeleteSing
                                 })}`}
                               {item.location ? ` · ${item.location}` : ''}
                               {' · '}
-                              {CATEGORY_LABEL[item.category]}
+                              {categoryNameOf(item)}
                             </span>
                           </span>
                           <button

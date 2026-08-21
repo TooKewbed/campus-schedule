@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ColorName, EventCategory, ScheduleEvent } from '../types/event';
+import { toCategory, type ColorName, type ScheduleEvent } from '../types/event';
 import type { DayMarker } from '../types/dayMarker';
 import type { Task } from '../types/task';
 import type { ShoppingItem } from '../types/shopping';
@@ -31,6 +31,7 @@ interface EventRow {
   start_at: string;
   end_at: string;
   category: string;
+  category_label: string | null;
   location: string | null;
   course_code: string | null;
   description: string | null;
@@ -92,6 +93,7 @@ function eventToRow(userId: string, e: ScheduleEvent): EventRow {
     start_at: e.start.toISOString(),
     end_at: e.end.toISOString(),
     category: e.category,
+    category_label: e.categoryLabel ?? null,
     location: e.location ?? null,
     course_code: e.courseCode ?? null,
     description: e.description ?? null,
@@ -108,7 +110,10 @@ function rowToEvent(r: EventRow): ScheduleEvent {
     title: r.title,
     start: new Date(r.start_at),
     end: new Date(r.end_at),
-    category: r.category as EventCategory,
+    // An unrecognised category would be neither fixed nor flexible, which puts
+    // the event in no lane at all; 'other' keeps it visible instead.
+    category: toCategory(r.category),
+    categoryLabel: r.category_label ?? undefined,
     location: r.location ?? undefined,
     courseCode: r.course_code ?? undefined,
     description: r.description ?? undefined,
@@ -348,8 +353,47 @@ async function push<T extends { id: string }, Row>(
     const { error } = await supabase
       .from(table)
       .upsert(upsert as never, { onConflict: 'user_id,id' });
+
+    // A column this build writes but the database has not got yet means the
+    // app is deployed ahead of its migration. Retrying without that column
+    // keeps everything else syncing, at the cost of the one new field, rather
+    // than failing the whole push and stranding every other edit — including
+    // ones that have nothing to do with the new feature.
+    if (error && isMissingColumn(error)) {
+      const column = missingColumnName(error);
+      if (column) {
+        const trimmed = upsert.map((row) => {
+          const copy = { ...(row as Record<string, unknown>) };
+          delete copy[column];
+          return copy;
+        });
+        const retry = await supabase
+          .from(table)
+          .upsert(trimmed as never, { onConflict: 'user_id,id' });
+        if (retry.error) throw new Error(`${table}: ${retry.error.message}`);
+        return;
+      }
+    }
+
     if (error) throw new Error(`${table}: ${error.message}`);
   }
+}
+
+/**
+ * Is this the error an undeclared column produces?
+ *
+ * PostgREST rejects it from its schema cache as PGRST204 before Postgres ever
+ * sees the statement; 42703 is the database's own answer, for the case where
+ * the cache is stale in the other direction.
+ */
+function isMissingColumn(error: { code?: string; message?: string }): boolean {
+  if (error.code === 'PGRST204' || error.code === '42703') return true;
+  return /could not find the .* column/i.test(error.message ?? '');
+}
+
+/** The column PostgREST named, e.g. "Could not find the 'category_label' column". */
+function missingColumnName(error: { message?: string }): string | null {
+  return /'([^']+)' column/.exec(error.message ?? '')?.[1] ?? null;
 }
 
 export function pushEvents(

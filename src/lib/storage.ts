@@ -1,4 +1,4 @@
-import type { ScheduleEvent } from '../types/event';
+import { toCategory, type ScheduleEvent } from '../types/event';
 import type { Task } from '../types/task';
 import type { ShoppingItem } from '../types/shopping';
 import type { QuickNote } from '../types/quickNote';
@@ -27,7 +27,14 @@ export function loadEvents(): ScheduleEvent[] {
 
     const parsed: StoredEvent[] = JSON.parse(raw);
     return parsed
-      .map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }))
+      // Same guard as the network path: a category this build does not know
+      // has no kind, and an event with no kind draws in neither lane.
+      .map((e) => ({
+        ...e,
+        category: toCategory(e.category),
+        start: new Date(e.start),
+        end: new Date(e.end),
+      }))
       .filter((e) => !Number.isNaN(e.start.getTime()) && !Number.isNaN(e.end.getTime()));
   } catch {
     return [];

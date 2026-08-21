@@ -2,6 +2,8 @@ import { useState } from 'react';
 import {
   CATEGORY_KIND,
   CATEGORY_LABEL,
+  MAX_CATEGORY_LABEL,
+  isOtherCategory,
   type ColorName,
   type EventCategory,
   type ScheduleEvent,
@@ -23,8 +25,10 @@ import DatePicker from './DatePicker';
 import WeekdayPicker from './WeekdayPicker';
 import Chevron from './Chevron';
 
-const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment'];
-const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring'];
+// 'Other' sits last in each group: it is the escape hatch, and putting it
+// anywhere else implies the named ones below it are somehow more obscure.
+const FIXED: EventCategory[] = ['class', 'lab', 'exam', 'work', 'appointment', 'other'];
+const FLEXIBLE: EventCategory[] = ['office-hours', 'study', 'tutoring', 'other-flexible'];
 
 interface Props {
   /** How many commitments exist, for the summary line only. */
@@ -62,6 +66,9 @@ export default function ManualEntry({
   const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('class');
+  /** Kept while switching between the two 'other' entries, so the fixed/flexible
+      choice can be changed without retyping the name. */
+  const [categoryLabel, setCategoryLabel] = useState('');
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [start, setStart] = useState('09:00');
   const [end, setEnd] = useState('09:50');
@@ -98,6 +105,7 @@ export default function ManualEntry({
     const base = {
       title,
       category,
+      categoryLabel,
       startMinutes: parseTimeInput(start),
       endMinutes: parseTimeInput(end),
       location,
@@ -205,6 +213,30 @@ export default function ManualEntry({
                   : 'Shows in the optional lane, never a conflict'}
               </span>
             </label>
+
+            {/* Appears only once "Other" is chosen. A permanently visible box
+                that is ignored eight times out of nine is worse than one that
+                arrives when it has a job to do. */}
+            {isOtherCategory(category) && (
+              <label className="field field-wide">
+                <span className="field-label">Call it</span>
+                <input
+                  value={categoryLabel}
+                  onChange={(e) => {
+                    setCategoryLabel(e.target.value);
+                    setProblem(null);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && submit()}
+                  placeholder="Band practice, physio, shift…"
+                  maxLength={MAX_CATEGORY_LABEL}
+                  autoFocus
+                />
+                <span className="field-hint">
+                  Your own name for this kind of commitment. Pick “Other” under the other
+                  heading to change whether it blocks time.
+                </span>
+              </label>
+            )}
 
             <fieldset className="repeat-choice field-wide four">
               <legend className="field-label">When is it?</legend>

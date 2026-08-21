@@ -1358,6 +1358,26 @@ footer {
   flex: none;
 }
 
+/* A switch inside one of the form grids is still a row.
+   `.field` sets `flex-direction: column` to stack a label over its input, and
+   `.switch-row` never overrode it — so the box centred itself above its own
+   text and the hint ran on inline after it. Both classes are needed on the
+   element (the grid cell comes from `.field`), so the combination gets its own
+   rule rather than either one changing. */
+.field.switch-row {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 9px;
+}
+.field.switch-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+/* Optically level with the first line of text rather than the top of the box. */
+.field.switch-row input { margin-top: 2px; }
+
 .holiday-row {
   display: flex;
   align-items: center;

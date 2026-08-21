@@ -17,10 +17,14 @@ export type EventCategory =
   | 'exam'
   | 'work'
   | 'appointment'
+  /** A type the person typed in themselves; the words live in `categoryLabel`. */
+  | 'other'
   // flexible — optional/available, renders in its own lane, never a conflict
   | 'office-hours'
   | 'study'
-  | 'tutoring';
+  | 'tutoring'
+  /** The same, but for something optional. */
+  | 'other-flexible';
 
 /**
  * The one table that decides what blocks time. Adding a category forces a
@@ -32,9 +36,11 @@ export const CATEGORY_KIND: Record<EventCategory, EventKind> = {
   exam: 'fixed',
   work: 'fixed',
   appointment: 'fixed',
+  other: 'fixed',
   'office-hours': 'flexible',
   study: 'flexible',
   tutoring: 'flexible',
+  'other-flexible': 'flexible',
 };
 
 export const CATEGORY_LABEL: Record<EventCategory, string> = {
@@ -43,10 +49,60 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
   exam: 'Exam',
   work: 'Work',
   appointment: 'Appointment',
+  other: 'Other',
   'office-hours': 'Office hours',
   study: 'Study',
   tutoring: 'Tutoring',
+  'other-flexible': 'Other',
 };
+
+/**
+ * Categories whose real name the person writes in themselves.
+ *
+ * There are two rather than one because the fixed/flexible split is the whole
+ * point of the category: a custom type still has to say whether it blocks
+ * time, and the dropdown already groups by exactly that. Deriving the kind
+ * from a stored flag instead would put a second source of truth next to the
+ * table above, which is the drift this file exists to prevent.
+ */
+/**
+ * A cap on the typed type name.
+ *
+ * It is drawn in the commitment list beside a title that has its own limit,
+ * and it travels to the database on every occurrence of a series. Long enough
+ * for anything anyone would actually call a commitment, short enough that it
+ * cannot become a paragraph pasted in by accident.
+ */
+export const MAX_CATEGORY_LABEL = 40;
+
+export function isOtherCategory(category: EventCategory): boolean {
+  return category === 'other' || category === 'other-flexible';
+}
+
+/** What to call this event's type in the interface. */
+export function categoryNameOf(
+  event: Pick<ScheduleEvent, 'category' | 'categoryLabel'>,
+): string {
+  return event.categoryLabel?.trim() || CATEGORY_LABEL[event.category];
+}
+
+export function isCategory(value: unknown): value is EventCategory {
+  // hasOwn, not `in`: `in` walks the prototype chain, so "toString" and
+  // "constructor" would both answer yes and then have no kind to look up.
+  return typeof value === 'string' && Object.hasOwn(CATEGORY_KIND, value);
+}
+
+/**
+ * A category read back from storage or the network, made safe.
+ *
+ * An unrecognised one — written by a newer build, or corrupted — has no entry
+ * in the kind table, so it is neither fixed nor flexible and the event
+ * silently appears in neither lane. Falling back to 'other' keeps it on the
+ * grid, where it can be seen and fixed, instead of vanishing.
+ */
+export function toCategory(value: unknown): EventCategory {
+  return isCategory(value) ? value : 'other';
+}
 
 /**
  * Palette slots, defined once in styles.css and usable on any block.
@@ -79,6 +135,14 @@ export interface ScheduleEvent {
   /** Exclusive. An event ending at 09:50 does not overlap one starting at 09:50. */
   end: Date;
   category: EventCategory;
+  /**
+   * The words typed for an 'other' category — "Band practice", "Physio".
+   *
+   * Only meaningful alongside one of the two 'other' categories, and cleared
+   * when the type changes away from them, so a label can never linger behind a
+   * built-in category and reappear later.
+   */
+  categoryLabel?: string;
   location?: string;
   /** e.g. "CHEM 101", parsed out of the summary when it looks like a course code. */
   courseCode?: string;
